@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, GraduationCap, User, Settings } from "lucide-react";
+import { Menu, X, BookOpen, User, LogOut } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, userRole, signOut, isAdmin, isStudent } = useAuth();
 
   const navigationItems = [
     { name: "Início", href: "#home" },
@@ -15,17 +18,17 @@ const Header = () => {
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-border">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-hero/95 backdrop-blur-md border-b border-white/20">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <GraduationCap className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center backdrop-blur-sm">
+              <BookOpen className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">TechPortal</h1>
-              <p className="text-xs text-muted-foreground">Informática</p>
+              <h1 className="text-xl font-bold text-white">Portal Informática</h1>
+              <p className="text-xs text-white/80">Curso Técnico</p>
             </div>
           </div>
 
@@ -35,7 +38,7 @@ const Header = () => {
               <a
                 key={item.name}
                 href={item.href}
-                className="text-foreground hover:text-primary transition-colors duration-200 font-medium"
+                className="text-white/90 hover:text-white transition-colors duration-200 font-medium text-sm"
               >
                 {item.name}
               </a>
@@ -43,15 +46,39 @@ const Header = () => {
           </nav>
 
           {/* Desktop Actions */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Button variant="ghost" size="sm">
-              <User className="w-4 h-4 mr-2" />
-              Área do Aluno
-            </Button>
-            <Button variant="hero" size="sm">
-              <Settings className="w-4 h-4 mr-2" />
-              Admin
-            </Button>
+          <div className="hidden md:flex items-center space-x-3">
+            {user ? (
+              <div className="flex items-center gap-3">
+                {isStudent && (
+                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10" asChild>
+                    <Link to="/student">
+                      <User className="w-4 h-4 mr-2" />
+                      Área do Aluno
+                    </Link>
+                  </Button>
+                )}
+                {isAdmin && (
+                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10" asChild>
+                    <Link to="/admin">
+                      <User className="w-4 h-4 mr-2" />
+                      Painel Admin
+                    </Link>
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  className="border-white/20 text-white hover:bg-white/10"
+                  onClick={signOut}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sair
+                </Button>
+              </div>
+            ) : (
+              <Button className="bg-white text-primary hover:bg-white/90" asChild>
+                <Link to="/auth">Fazer Login</Link>
+              </Button>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -60,6 +87,7 @@ const Header = () => {
               variant="ghost"
               size="sm"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="text-white hover:bg-white/10"
             >
               {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </Button>
@@ -68,27 +96,59 @@ const Header = () => {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border animate-fade-in">
+          <div className="md:hidden py-4 border-t border-white/20 animate-fade-in">
             <nav className="flex flex-col space-y-4">
               {navigationItems.map((item) => (
                 <a
                   key={item.name}
                   href={item.href}
-                  className="text-foreground hover:text-primary transition-colors duration-200 font-medium py-2"
+                  className="text-white/90 hover:text-white transition-colors duration-200 font-medium py-2"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.name}
                 </a>
               ))}
-              <div className="flex flex-col space-y-2 pt-4 border-t border-border">
-                <Button variant="ghost" size="sm" className="justify-start">
-                  <User className="w-4 h-4 mr-2" />
-                  Área do Aluno
-                </Button>
-                <Button variant="hero" size="sm" className="justify-start">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Admin
-                </Button>
+              <div className="flex flex-col space-y-2 pt-4 border-t border-white/20">
+                {user ? (
+                  <>
+                    {isStudent && (
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-start border-white/20 text-white hover:bg-white/10"
+                        asChild
+                      >
+                        <Link to="/student">
+                          <User className="w-4 h-4 mr-2" />
+                          Área do Aluno
+                        </Link>
+                      </Button>
+                    )}
+                    {isAdmin && (
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-start border-white/20 text-white hover:bg-white/10"
+                        asChild
+                      >
+                        <Link to="/admin">
+                          <User className="w-4 h-4 mr-2" />
+                          Painel Admin
+                        </Link>
+                      </Button>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start border-white/20 text-white hover:bg-white/10"
+                      onClick={signOut}
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sair
+                    </Button>
+                  </>
+                ) : (
+                  <Button className="w-full justify-start bg-white text-primary hover:bg-white/90" asChild>
+                    <Link to="/auth">Fazer Login</Link>
+                  </Button>
+                )}
               </div>
             </nav>
           </div>
