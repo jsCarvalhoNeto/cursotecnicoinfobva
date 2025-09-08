@@ -75,7 +75,7 @@ const Header = () => {
                 </Button>
               </div>
             ) : (
-              <Button className="bg-white text-primary hover:bg-white/90" asChild>
+              <Button className="bg-white/20 backdrop-blur-sm text-white border border-white/30 hover:bg-white/30 hover:border-white/50 shadow-glow" asChild>
                 <Link to="/auth">Fazer Login</Link>
               </Button>
             )}
@@ -145,7 +145,7 @@ const Header = () => {
                     </Button>
                   </>
                 ) : (
-                  <Button className="w-full justify-start bg-white text-primary hover:bg-white/90" asChild>
+                  <Button className="w-full justify-start bg-white/20 backdrop-blur-sm text-white border border-white/30 hover:bg-white/30" asChild>
                     <Link to="/auth">Fazer Login</Link>
                   </Button>
                 )}
