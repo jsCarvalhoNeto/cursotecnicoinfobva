@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -7,10 +7,105 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminDashboard() {
   const { user, profile, isAdmin, signOut, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [users, setUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (user && isAdmin) {
+      fetchUsers();
+    }
+  }, [user, isAdmin]);
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      // Fetch profiles with user roles
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch user roles separately
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      if (rolesError) throw rolesError;
+
+      // Combine profiles with their roles
+      const usersWithRoles = profiles?.map(profile => ({
+        ...profile,
+        roles: userRoles?.filter(role => role.user_id === profile.user_id) || []
+      })) || [];
+
+      setUsers(usersWithRoles);
+      setTotalStudents(usersWithRoles.filter(u => 
+        u.roles.some((r: any) => r.role === 'student')
+      ).length);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar usuários",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    try {
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      if (error) throw error;
+      
+      toast({
+        title: "Sucesso",
+        description: "Usuário removido com sucesso",
+      });
+      fetchUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao remover usuário",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const promoteToAdmin = async (userEmail: string) => {
+    try {
+      const { data, error } = await supabase.rpc('promote_user_to_admin', {
+        _user_email: userEmail
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Sucesso",
+        description: data || "Usuário promovido a administrador",
+      });
+      fetchUsers();
+    } catch (error) {
+      console.error('Error promoting user:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao promover usuário",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -24,20 +119,12 @@ export default function AdminDashboard() {
     return <Navigate to="/auth" replace />;
   }
 
-  // Mock data para demonstração
+  // Stats data using real data
   const stats = [
-    { title: 'Estudantes Ativos', value: '156', icon: Users, color: 'text-primary', bgColor: 'bg-primary/10' },
+    { title: 'Estudantes Ativos', value: totalStudents.toString(), icon: Users, color: 'text-primary', bgColor: 'bg-primary/10' },
     { title: 'Disciplinas', value: '12', icon: BookOpen, color: 'text-accent', bgColor: 'bg-accent/10' },
     { title: 'Taxa de Aprovação', value: '89%', icon: BarChart3, color: 'text-green-500', bgColor: 'bg-green-500/10' },
-    { title: 'Administradores', value: '3', icon: Shield, color: 'text-destructive', bgColor: 'bg-destructive/10' }
-  ];
-
-  const recentStudents = [
-    { id: 1, name: 'Ana Silva', email: 'ana@email.com', registration: '2024001', status: 'Ativo' },
-    { id: 2, name: 'Carlos Santos', email: 'carlos@email.com', registration: '2024002', status: 'Ativo' },
-    { id: 3, name: 'Maria Oliveira', email: 'maria@email.com', registration: '2024003', status: 'Pendente' },
-    { id: 4, name: 'João Costa', email: 'joao@email.com', registration: '2024004', status: 'Ativo' },
-    { id: 5, name: 'Beatriz Lima', email: 'bia@email.com', registration: '2024005', status: 'Inativo' }
+    { title: 'Administradores', value: users.filter(u => u.roles.some((r: any) => r.role === 'admin')).length.toString(), icon: Shield, color: 'text-destructive', bgColor: 'bg-destructive/10' }
   ];
 
   const subjects = [
@@ -46,6 +133,18 @@ export default function AdminDashboard() {
     { id: 3, name: 'Redes de Computadores', students: 38, teacher: 'Prof. Carlos' },
     { id: 4, name: 'Desenvolvimento Web', students: 50, teacher: 'Prof. Ana' }
   ];
+
+  const getUserStatus = (user: any) => {
+    if (user.roles.some((r: any) => r.role === 'admin')) return 'Admin';
+    if (user.roles.some((r: any) => r.role === 'student')) return 'Ativo';
+    return 'Pendente';
+  };
+
+  const getUserStatusVariant = (status: string) => {
+    if (status === 'Admin') return 'destructive';
+    if (status === 'Ativo') return 'default';
+    return 'secondary';
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -218,40 +317,71 @@ export default function AdminDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentStudents.map((student) => (
-                    <div key={student.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-semibold text-primary">
-                            {student.name.split(' ').map(n => n[0]).join('')}
-                          </span>
+                {loadingUsers ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {users.map((user) => {
+                      const status = getUserStatus(user);
+                      return (
+                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-semibold text-primary">
+                                {user.full_name ? user.full_name.split(' ').map((n: string) => n[0]).join('') : user.email[0].toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium">{user.full_name || 'Nome não informado'}</p>
+                              <p className="text-sm text-muted-foreground">{user.email}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Matrícula: {user.student_registration || 'Não informado'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={getUserStatusVariant(status)}>
+                              {status}
+                            </Badge>
+                            <div className="flex items-center gap-1">
+                              <Button size="sm" variant="ghost">
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost">
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              {status !== 'Admin' && (
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => promoteToAdmin(user.email)}
+                                  title="Promover a Admin"
+                                >
+                                  <Shield className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => deleteUser(user.user_id)}
+                                title="Remover usuário"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">{student.name}</p>
-                          <p className="text-sm text-muted-foreground">{student.email}</p>
-                          <p className="text-xs text-muted-foreground">Matrícula: {student.registration}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={student.status === 'Ativo' ? 'default' : student.status === 'Pendente' ? 'secondary' : 'destructive'}>
-                          {student.status}
-                        </Badge>
-                        <div className="flex items-center gap-1">
-                          <Button size="sm" variant="ghost">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      );
+                    })}
+                    {users.length === 0 && (
+                      <p className="text-center text-muted-foreground py-8">
+                        Nenhum usuário encontrado
+                      </p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
