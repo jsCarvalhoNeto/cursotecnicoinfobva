@@ -5,14 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import SubjectModal from '@/components/SubjectModal';
 
 export default function AdminDashboard() {
   const { user, profile, isAdmin, signOut, loading } = useAuth();
@@ -22,16 +19,8 @@ export default function AdminDashboard() {
   const [totalStudents, setTotalStudents] = useState(0);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
-  const [showSubjectDialog, setShowSubjectDialog] = useState(false);
+  const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [editingSubject, setEditingSubject] = useState<any>(null);
-  const [subjectForm, setSubjectForm] = useState({
-    name: '',
-    description: '',
-    teacher_name: '',
-    max_students: 50,
-    semester: '',
-    schedule: ''
-  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -123,58 +112,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const createSubject = async () => {
-    try {
-      const { error } = await supabase
-        .from('subjects')
-        .insert([subjectForm]);
-
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso",
-        description: "Disciplina criada com sucesso",
-      });
-      setShowSubjectDialog(false);
-      resetSubjectForm();
-      fetchSubjects();
-    } catch (error) {
-      console.error('Error creating subject:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao criar disciplina",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const updateSubject = async () => {
-    try {
-      const { error } = await supabase
-        .from('subjects')
-        .update(subjectForm)
-        .eq('id', editingSubject.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso",
-        description: "Disciplina atualizada com sucesso",
-      });
-      setShowSubjectDialog(false);
-      setEditingSubject(null);
-      resetSubjectForm();
-      fetchSubjects();
-    } catch (error) {
-      console.error('Error updating subject:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar disciplina",
-        variant: "destructive",
-      });
-    }
-  };
-
   const deleteSubject = async (subjectId: string) => {
     try {
       const { error } = await supabase
@@ -199,33 +136,9 @@ export default function AdminDashboard() {
     }
   };
 
-  const resetSubjectForm = () => {
-    setSubjectForm({
-      name: '',
-      description: '',
-      teacher_name: '',
-      max_students: 50,
-      semester: '',
-      schedule: ''
-    });
-  };
-
-  const openSubjectDialog = (subject?: any) => {
-    if (subject) {
-      setEditingSubject(subject);
-      setSubjectForm({
-        name: subject.name,
-        description: subject.description || '',
-        teacher_name: subject.teacher_name,
-        max_students: subject.max_students,
-        semester: subject.semester || '',
-        schedule: subject.schedule || ''
-      });
-    } else {
-      setEditingSubject(null);
-      resetSubjectForm();
-    }
-    setShowSubjectDialog(true);
+  const openSubjectModal = (subject?: any) => {
+    setEditingSubject(subject || null);
+    setShowSubjectModal(true);
   };
 
   const promoteToAdmin = async (userEmail: string) => {
@@ -529,104 +442,10 @@ export default function AdminDashboard() {
                 <h2 className="text-2xl font-bold">Gerenciar Disciplinas</h2>
                 <p className="text-muted-foreground">Organize e configure as disciplinas do curso</p>
               </div>
-              <Dialog open={showSubjectDialog} onOpenChange={setShowSubjectDialog}>
-                <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2" onClick={() => openSubjectDialog()}>
-                    <Plus className="w-4 h-4" />
-                    Nova Disciplina
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingSubject ? 'Editar Disciplina' : 'Nova Disciplina'}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {editingSubject ? 'Edite as informações da disciplina.' : 'Adicione uma nova disciplina ao sistema.'}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="name" className="text-right">
-                        Nome
-                      </Label>
-                      <Input
-                        id="name"
-                        value={subjectForm.name}
-                        onChange={(e) => setSubjectForm({...subjectForm, name: e.target.value})}
-                        className="col-span-3"
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="teacher" className="text-right">
-                        Professor
-                      </Label>
-                      <Input
-                        id="teacher"
-                        value={subjectForm.teacher_name}
-                        onChange={(e) => setSubjectForm({...subjectForm, teacher_name: e.target.value})}
-                        className="col-span-3"
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="semester" className="text-right">
-                        Semestre
-                      </Label>
-                      <Input
-                        id="semester"
-                        value={subjectForm.semester}
-                        onChange={(e) => setSubjectForm({...subjectForm, semester: e.target.value})}
-                        className="col-span-3"
-                        placeholder="Ex: 2024.1"
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="maxStudents" className="text-right">
-                        Max Alunos
-                      </Label>
-                      <Input
-                        id="maxStudents"
-                        type="number"
-                        value={subjectForm.max_students}
-                        onChange={(e) => setSubjectForm({...subjectForm, max_students: parseInt(e.target.value) || 50})}
-                        className="col-span-3"
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="schedule" className="text-right">
-                        Horário
-                      </Label>
-                      <Input
-                        id="schedule"
-                        value={subjectForm.schedule}
-                        onChange={(e) => setSubjectForm({...subjectForm, schedule: e.target.value})}
-                        className="col-span-3"
-                        placeholder="Ex: Segunda e Quarta 14:00-16:00"
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="description" className="text-right">
-                        Descrição
-                      </Label>
-                      <Textarea
-                        id="description"
-                        value={subjectForm.description}
-                        onChange={(e) => setSubjectForm({...subjectForm, description: e.target.value})}
-                        className="col-span-3"
-                        placeholder="Descrição da disciplina"
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button 
-                      type="submit" 
-                      onClick={editingSubject ? updateSubject : createSubject}
-                    >
-                      {editingSubject ? 'Atualizar' : 'Criar'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <Button className="flex items-center gap-2" onClick={() => openSubjectModal()}>
+                <Plus className="w-4 h-4" />
+                Nova Disciplina
+              </Button>
             </div>
 
             {loadingSubjects ? (
@@ -662,7 +481,7 @@ export default function AdminDashboard() {
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => openSubjectDialog(subject)}
+                              onClick={() => openSubjectModal(subject)}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -689,6 +508,13 @@ export default function AdminDashboard() {
                 )}
               </div>
             )}
+
+            <SubjectModal
+              isOpen={showSubjectModal}
+              onClose={() => setShowSubjectModal(false)}
+              subject={editingSubject}
+              onSuccess={fetchSubjects}
+            />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
