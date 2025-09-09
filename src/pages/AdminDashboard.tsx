@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,11 +20,24 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [totalStudents, setTotalStudents] = useState(0);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [showSubjectDialog, setShowSubjectDialog] = useState(false);
+  const [editingSubject, setEditingSubject] = useState<any>(null);
+  const [subjectForm, setSubjectForm] = useState({
+    name: '',
+    description: '',
+    teacher_name: '',
+    max_students: 50,
+    semester: '',
+    schedule: ''
+  });
   const { toast } = useToast();
 
   useEffect(() => {
     if (user && isAdmin) {
       fetchUsers();
+      fetchSubjects();
     }
   }, [user, isAdmin]);
 
@@ -84,6 +101,133 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchSubjects = async () => {
+    setLoadingSubjects(true);
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setSubjects(data || []);
+    } catch (error) {
+      console.error('Error fetching subjects:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar disciplinas",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingSubjects(false);
+    }
+  };
+
+  const createSubject = async () => {
+    try {
+      const { error } = await supabase
+        .from('subjects')
+        .insert([subjectForm]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Disciplina criada com sucesso",
+      });
+      setShowSubjectDialog(false);
+      resetSubjectForm();
+      fetchSubjects();
+    } catch (error) {
+      console.error('Error creating subject:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao criar disciplina",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateSubject = async () => {
+    try {
+      const { error } = await supabase
+        .from('subjects')
+        .update(subjectForm)
+        .eq('id', editingSubject.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Disciplina atualizada com sucesso",
+      });
+      setShowSubjectDialog(false);
+      setEditingSubject(null);
+      resetSubjectForm();
+      fetchSubjects();
+    } catch (error) {
+      console.error('Error updating subject:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar disciplina",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteSubject = async (subjectId: string) => {
+    try {
+      const { error } = await supabase
+        .from('subjects')
+        .delete()
+        .eq('id', subjectId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Disciplina removida com sucesso",
+      });
+      fetchSubjects();
+    } catch (error) {
+      console.error('Error deleting subject:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao remover disciplina",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const resetSubjectForm = () => {
+    setSubjectForm({
+      name: '',
+      description: '',
+      teacher_name: '',
+      max_students: 50,
+      semester: '',
+      schedule: ''
+    });
+  };
+
+  const openSubjectDialog = (subject?: any) => {
+    if (subject) {
+      setEditingSubject(subject);
+      setSubjectForm({
+        name: subject.name,
+        description: subject.description || '',
+        teacher_name: subject.teacher_name,
+        max_students: subject.max_students,
+        semester: subject.semester || '',
+        schedule: subject.schedule || ''
+      });
+    } else {
+      setEditingSubject(null);
+      resetSubjectForm();
+    }
+    setShowSubjectDialog(true);
+  };
+
   const promoteToAdmin = async (userEmail: string) => {
     try {
       const { data, error } = await supabase.rpc('promote_user_to_admin', {
@@ -122,16 +266,9 @@ export default function AdminDashboard() {
   // Stats data using real data
   const stats = [
     { title: 'Estudantes Ativos', value: totalStudents.toString(), icon: Users, color: 'text-primary', bgColor: 'bg-primary/10' },
-    { title: 'Disciplinas', value: '12', icon: BookOpen, color: 'text-accent', bgColor: 'bg-accent/10' },
+    { title: 'Disciplinas', value: subjects.length.toString(), icon: BookOpen, color: 'text-accent', bgColor: 'bg-accent/10' },
     { title: 'Taxa de Aprovação', value: '89%', icon: BarChart3, color: 'text-green-500', bgColor: 'bg-green-500/10' },
     { title: 'Administradores', value: users.filter(u => u.roles.some((r: any) => r.role === 'admin')).length.toString(), icon: Shield, color: 'text-destructive', bgColor: 'bg-destructive/10' }
-  ];
-
-  const subjects = [
-    { id: 1, name: 'Programação I', students: 45, teacher: 'Prof. João' },
-    { id: 2, name: 'Banco de Dados', students: 42, teacher: 'Prof. Maria' },
-    { id: 3, name: 'Redes de Computadores', students: 38, teacher: 'Prof. Carlos' },
-    { id: 4, name: 'Desenvolvimento Web', students: 50, teacher: 'Prof. Ana' }
   ];
 
   const getUserStatus = (user: any) => {
@@ -392,42 +529,166 @@ export default function AdminDashboard() {
                 <h2 className="text-2xl font-bold">Gerenciar Disciplinas</h2>
                 <p className="text-muted-foreground">Organize e configure as disciplinas do curso</p>
               </div>
-              <Button className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Nova Disciplina
-              </Button>
+              <Dialog open={showSubjectDialog} onOpenChange={setShowSubjectDialog}>
+                <DialogTrigger asChild>
+                  <Button className="flex items-center gap-2" onClick={() => openSubjectDialog()}>
+                    <Plus className="w-4 h-4" />
+                    Nova Disciplina
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingSubject ? 'Editar Disciplina' : 'Nova Disciplina'}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {editingSubject ? 'Edite as informações da disciplina.' : 'Adicione uma nova disciplina ao sistema.'}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="name" className="text-right">
+                        Nome
+                      </Label>
+                      <Input
+                        id="name"
+                        value={subjectForm.name}
+                        onChange={(e) => setSubjectForm({...subjectForm, name: e.target.value})}
+                        className="col-span-3"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="teacher" className="text-right">
+                        Professor
+                      </Label>
+                      <Input
+                        id="teacher"
+                        value={subjectForm.teacher_name}
+                        onChange={(e) => setSubjectForm({...subjectForm, teacher_name: e.target.value})}
+                        className="col-span-3"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="semester" className="text-right">
+                        Semestre
+                      </Label>
+                      <Input
+                        id="semester"
+                        value={subjectForm.semester}
+                        onChange={(e) => setSubjectForm({...subjectForm, semester: e.target.value})}
+                        className="col-span-3"
+                        placeholder="Ex: 2024.1"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="maxStudents" className="text-right">
+                        Max Alunos
+                      </Label>
+                      <Input
+                        id="maxStudents"
+                        type="number"
+                        value={subjectForm.max_students}
+                        onChange={(e) => setSubjectForm({...subjectForm, max_students: parseInt(e.target.value) || 50})}
+                        className="col-span-3"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="schedule" className="text-right">
+                        Horário
+                      </Label>
+                      <Input
+                        id="schedule"
+                        value={subjectForm.schedule}
+                        onChange={(e) => setSubjectForm({...subjectForm, schedule: e.target.value})}
+                        className="col-span-3"
+                        placeholder="Ex: Segunda e Quarta 14:00-16:00"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="description" className="text-right">
+                        Descrição
+                      </Label>
+                      <Textarea
+                        id="description"
+                        value={subjectForm.description}
+                        onChange={(e) => setSubjectForm({...subjectForm, description: e.target.value})}
+                        className="col-span-3"
+                        placeholder="Descrição da disciplina"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button 
+                      type="submit" 
+                      onClick={editingSubject ? updateSubject : createSubject}
+                    >
+                      {editingSubject ? 'Atualizar' : 'Criar'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {subjects.map((subject) => (
-                <Card key={subject.id} className="hover:shadow-glow transition-all duration-300">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">{subject.name}</CardTitle>
-                        <CardDescription>Professor: {subject.teacher}</CardDescription>
+            {loadingSubjects ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {subjects.map((subject) => (
+                  <Card key={subject.id} className="hover:shadow-glow transition-all duration-300">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-lg">{subject.name}</CardTitle>
+                          <CardDescription>Professor: {subject.teacher_name}</CardDescription>
+                          {subject.schedule && (
+                            <p className="text-sm text-muted-foreground mt-1">{subject.schedule}</p>
+                          )}
+                        </div>
+                        <Badge variant="outline">{subject.current_students}/{subject.max_students}</Badge>
                       </div>
-                      <Badge variant="outline">{subject.students} alunos</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex justify-between items-center">
-                      <div className="text-sm text-muted-foreground">
-                        Estudantes matriculados: {subject.students}
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {subject.description && (
+                          <p className="text-sm text-muted-foreground">{subject.description}</p>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm text-muted-foreground">
+                            Semestre: {subject.semester || 'Não informado'}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => openSubjectDialog(subject)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => deleteSubject(subject.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {subjects.length === 0 && (
+                  <div className="col-span-2 text-center py-8">
+                    <p className="text-muted-foreground">Nenhuma disciplina encontrada</p>
+                  </div>
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">

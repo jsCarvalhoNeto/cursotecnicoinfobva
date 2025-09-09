@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      enrollments: {
+        Row: {
+          enrolled_at: string
+          grade: number | null
+          id: string
+          status: string | null
+          student_id: string
+          subject_id: string
+        }
+        Insert: {
+          enrolled_at?: string
+          grade?: number | null
+          id?: string
+          status?: string | null
+          student_id: string
+          subject_id: string
+        }
+        Update: {
+          enrolled_at?: string
+          grade?: number | null
+          id?: string
+          status?: string | null
+          student_id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "enrollments_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -41,6 +83,45 @@ export type Database = {
           student_registration?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      subjects: {
+        Row: {
+          created_at: string
+          current_students: number | null
+          description: string | null
+          id: string
+          max_students: number | null
+          name: string
+          schedule: string | null
+          semester: string | null
+          teacher_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_students?: number | null
+          description?: string | null
+          id?: string
+          max_students?: number | null
+          name: string
+          schedule?: string | null
+          semester?: string | null
+          teacher_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_students?: number | null
+          description?: string | null
+          id?: string
+          max_students?: number | null
+          name?: string
+          schedule?: string | null
+          semester?: string | null
+          teacher_name?: string
+          updated_at?: string
         }
         Relationships: []
       }
