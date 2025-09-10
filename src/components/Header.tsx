@@ -9,8 +9,8 @@ const Header = () => {
   const { user, userRole, signOut, isAdmin, isStudent } = useAuth();
 
   const navigationItems = [
-    { name: "Início", href: "#home" },
-    { name: "Disciplinas", href: "#courses" },
+    { name: "Início", href: "/" },
+    { name: "Disciplinas", href: "/disciplinas" },
     { name: "Projetos", href: "#projects" },
     { name: "Notícias", href: "#news" },
     { name: "Eventos", href: "#events" },
@@ -35,13 +35,23 @@ const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             {navigationItems.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                className="text-white/90 hover:text-white transition-colors duration-200 font-medium text-sm"
-              >
-                {item.name}
-              </a>
+              item.href.startsWith('/') ? (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className="text-white/90 hover:text-white transition-colors duration-200 font-medium text-sm"
+                >
+                  {item.name}
+                </Link>
+              ) : (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  className="text-white/90 hover:text-white transition-colors duration-200 font-medium text-sm"
+                >
+                  {item.name}
+                </a>
+              )
             ))}
           </nav>
 
@@ -99,14 +109,25 @@ const Header = () => {
           <div className="md:hidden py-4 border-t border-white/20 animate-fade-in">
             <nav className="flex flex-col space-y-4">
               {navigationItems.map((item) => (
-                <a
-                  key={item.name}
-                  href={item.href}
-                  className="text-white/90 hover:text-white transition-colors duration-200 font-medium py-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item.name}
-                </a>
+                item.href.startsWith('/') ? (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className="text-white/90 hover:text-white transition-colors duration-200 font-medium py-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                ) : (
+                  <a
+                    key={item.name}
+                    href={item.href}
+                    className="text-white/90 hover:text-white transition-colors duration-200 font-medium py-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.name}
+                  </a>
+                )
               ))}
               <div className="flex flex-col space-y-2 pt-4 border-t border-white/20">
                 {user ? (
