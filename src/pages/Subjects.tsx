@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Users, Calendar, BookOpen } from "lucide-react";
@@ -18,6 +19,7 @@ interface Subject {
 }
 
 const Subjects = () => {
+  const navigate = useNavigate();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -89,7 +91,11 @@ const Subjects = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {subjects.map((subject) => (
-                <Card key={subject.id} className="hover:shadow-lg transition-all duration-300 border-border/50">
+                <Card 
+                  key={subject.id} 
+                  className="hover:shadow-lg transition-all duration-300 border-border/50 cursor-pointer"
+                  onClick={() => navigate(`/disciplinas/${subject.id}`)}
+                >
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
