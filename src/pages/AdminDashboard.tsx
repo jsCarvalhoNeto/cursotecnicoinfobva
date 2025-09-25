@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +35,7 @@ export default function AdminDashboard() {
   const [showTeacherModal, setShowTeacherModal] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<any>(null);
   const [editingStudent, setEditingStudent] = useState<any>(null);
+  const [subjectToDelete, setSubjectToDelete] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -200,7 +202,9 @@ export default function AdminDashboard() {
         title: "Sucesso",
         description: "Disciplina removida com sucesso do sistema.",
       });
+<<<<<<< HEAD
       fetchSubjects(); // Atualiza a lista de disciplinas
+      setSubjectToDelete(null);
     } catch (error) {
       console.error('Error deleting subject:', error);
       toast({
@@ -792,7 +796,7 @@ export default function AdminDashboard() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => deleteSubject(subject.id)}
+                              onClick={() => setSubjectToDelete(subject)}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -816,6 +820,33 @@ export default function AdminDashboard() {
               subject={editingSubject}
               onSuccess={fetchSubjects}
             />
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={!!subjectToDelete} onOpenChange={() => setSubjectToDelete(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja excluir a disciplina "{subjectToDelete?.name}"?
+                    <br /><br />
+                    <span className="font-semibold text-destructive">
+                      ⚠️ Esta ação é irreversível e não pode ser desfeita.
+                    </span>
+                    <br />
+                    Todos os dados relacionados a esta disciplina serão permanentemente removidos.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteSubject(subjectToDelete?.id)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Excluir Definitivamente
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">

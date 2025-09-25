@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BookOpen, LogOut, Home, BarChart3, Settings, Calendar, GraduationCap, Users, Edit3, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -33,6 +33,7 @@ export default function StudentDashboard() {
     newPassword: '',
     confirmPassword: ''
   });
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -123,7 +124,7 @@ export default function StudentDashboard() {
         variant: "destructive",
       });
     }
-  };
+ };
 
   const handleChangePassword = async () => {
     if (!user || !passwordData.newPassword || passwordData.newPassword !== passwordData.confirmPassword) {
