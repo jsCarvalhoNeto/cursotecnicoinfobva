@@ -33,9 +33,9 @@ export default function Auth() {
       toast({
         variant: "destructive",
         title: "Erro no login",
-        description: error.message === 'Invalid login credentials' 
+        description: error === 'Invalid login credentials' 
           ? "Email ou senha incorretos" 
-          : error.message
+          : "Ocorreu um erro ao tentar fazer login"
       });
     } else {
       toast({
@@ -63,9 +63,9 @@ export default function Auth() {
       toast({
         variant: "destructive",
         title: "Erro no cadastro",
-        description: error.message === 'User already registered' 
+        description: error === 'User already registered' 
           ? "Este email já está cadastrado" 
-          : error.message
+          : "Ocorreu um erro ao tentar fazer o cadastro"
       });
     } else {
       toast({

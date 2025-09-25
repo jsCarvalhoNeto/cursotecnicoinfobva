@@ -1,13 +1,161 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Calendar, FileText, User, LogOut, Home } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BookOpen, LogOut, Home, BarChart3, Settings, Calendar, GraduationCap, Users, Edit3, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { updateStudentProfile, changeStudentPassword } from '@/services/studentProfileService';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function StudentDashboard() {
   const { user, profile, isStudent, signOut, loading } = useAuth();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [grades, setGrades] = useState<any[]>([]);
+  const [loadingGrades, setLoadingGrades] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    full_name: '',
+    email: '',
+    student_registration: '',
+    phone: ''
+  });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (user && isStudent) {
+      fetchSubjects();
+      fetchGrades();
+      fetchNotifications();
+      loadProfileData();
+    }
+  }, [user, isStudent]);
+
+  const loadProfileData = async () => {
+    if (user && profile) {
+      setProfileData({
+        full_name: profile.full_name || '',
+        email: profile.email || '',
+        student_registration: profile.student_registration || '',
+        phone: profile.phone || ''
+      });
+    }
+  };
+
+  const fetchSubjects = async () => {
+    setLoadingSubjects(true);
+    try {
+      // Buscar todas as disciplinas cadastradas no sistema
+      const response = await fetch('http://localhost:4001/api/subjects');
+      if (!response.ok) {
+        throw new Error('Erro ao buscar disciplinas');
+      }
+      const subjectsData = await response.json();
+      setSubjects(subjectsData);
+    } catch (error) {
+      console.error('Error fetching subjects:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar disciplinas",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingSubjects(false);
+    }
+  };
+
+  const fetchGrades = async () => {
+    setLoadingGrades(true);
+    try {
+      // Simulando busca de notas - em produção, buscaria da API
+      const mockGrades = [];
+      setGrades(mockGrades);
+    } catch (error) {
+      console.error('Error fetching grades:', error);
+    } finally {
+      setLoadingGrades(false);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    setLoadingNotifications(true);
+    try {
+      // Simulando busca de notificações - em produção, buscaria da API
+      const mockNotifications = [];
+      setNotifications(mockNotifications);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!user) return;
+
+    try {
+      await updateStudentProfile(user.id, profileData);
+      toast({
+        title: "Sucesso",
+        description: "Perfil atualizado com sucesso!",
+      });
+      setEditingProfile(false);
+      // Atualizar o perfil no contexto de autenticação
+      // Em produção, você pode querer chamar uma função para atualizar o perfil no contexto
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar perfil. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!user || !passwordData.newPassword || passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: "Erro",
+        description: "As senhas não coincidem ou estão vazias.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await changeStudentPassword(user.id, passwordData.newPassword);
+      toast({
+        title: "Sucesso",
+        description: "Senha alterada com sucesso!",
+      });
+      // Limpar os campos de senha
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (error) {
+      console.error('Error changing password:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao alterar senha. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -21,6 +169,14 @@ export default function StudentDashboard() {
     return <Navigate to="/auth" replace />;
   }
 
+  // Stats data for student dashboard
+  const stats = [
+    { title: 'Minhas Disciplinas', value: subjects.length.toString(), icon: BookOpen, color: 'text-primary', bgColor: 'bg-primary/10' },
+    { title: 'Atividades Pendentes', value: '0', icon: BarChart3, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
+    { title: 'Notificações', value: notifications.length.toString(), icon: Users, color: 'text-accent', bgColor: 'bg-accent/10' },
+    { title: 'Progresso Geral', value: '0%', icon: GraduationCap, color: 'text-green-500', bgColor: 'bg-green-500/10' }
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -32,21 +188,30 @@ export default function StudentDashboard() {
                 <BookOpen className="w-5 h-5 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-bold">Portal do Estudante</h1>
+                <h1 className="text-xl font-bold">Painel do Aluno</h1>
                 <p className="text-sm text-muted-foreground">
                   Bem-vindo, {profile?.full_name || user.email}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <User className="w-3 h-3" />
-                Estudante
+              <Badge variant="default" className="flex items-center gap-1">
+                <BookOpen className="w-3 h-3" />
+                Aluno
               </Badge>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => window.location.reload()}
+                title="Atualizar página"
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Atualizar
+              </Button>
               <Button variant="outline" size="sm" asChild>
                 <Link to="/">
                   <Home className="w-4 h-4 mr-2" />
-                  Início
+                  Portal
                 </Link>
               </Button>
               <Button variant="outline" size="sm" onClick={signOut}>
@@ -60,122 +225,448 @@ export default function StudentDashboard() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <div className="bg-gradient-primary rounded-lg p-6 text-primary-foreground">
-            <h2 className="text-2xl font-bold mb-2">
-              Olá, {profile?.full_name || 'Estudante'}!
-            </h2>
-            <p className="text-primary-foreground/90">
-              Bem-vindo ao seu painel de estudante. Aqui você pode acompanhar suas disciplinas, 
-              notas e atividades do curso técnico em informática.
-            </p>
-            {profile?.student_registration && (
-              <p className="text-sm text-primary-foreground/80 mt-2">
-                Matrícula: {profile.student_registration}
-              </p>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+          <TabsList className="grid w-full grid-cols-5 max-w-2xl mx-auto mb-8">
+            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+            <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
+            <TabsTrigger value="grades">Notas & Desempenho</TabsTrigger>
+            <TabsTrigger value="calendar">Calendário</TabsTrigger>
+            <TabsTrigger value="settings">Configurações</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-8">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {stats.map((stat, index) => (
+                <Card key={index} className="hover:shadow-glow transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-2xl font-bold">{stat.value}</p>
+                        <p className="text-sm text-muted-foreground">{stat.title}</p>
+                      </div>
+                      <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
+                        <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card className="hover:shadow-glow transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-primary" />
+                    Minhas Disciplinas
+                  </CardTitle>
+                  <CardDescription>
+                    Acesse materiais, tarefas e informações das disciplinas
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button className="w-full" onClick={() => setActiveTab('subjects')}>
+                    Acessar Disciplinas
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-glow transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-accent" />
+                    Calendário Acadêmico
+                  </CardTitle>
+                  <CardDescription>
+                    Veja datas importantes e prazos acadêmicos
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="outline" className="w-full" onClick={() => setActiveTab('calendar')}>
+                    Ver Calendário
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-glow transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-secondary-foreground" />
+                    Configurações
+                  </CardTitle>
+                  <CardDescription>
+                    Configure seu perfil e preferências
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="outline" className="w-full" onClick={() => setActiveTab('settings')}>
+                    Configurações
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Atividades Recentes</CardTitle>
+                <CardDescription>
+                  Últimas atualizações e notificações importantes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {notifications.length > 0 ? (
+                    notifications.map((activity, index) => (
+                      <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                        <div className="w-8 h-8 bg-background rounded-full flex items-center justify-center">
+                          <BookOpen className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{activity.title}</p>
+                          <p className="text-xs text-muted-foreground">{activity.time}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="space-y-4">
+                      {[
+                        { action: 'Nova atividade lançada na disciplina Desenvolvimento Web', time: 'Hoje às 14:30', icon: BookOpen, color: 'text-green-600' },
+                        { action: 'Notas atualizadas para a disciplina Banco de Dados', time: 'Ontem às 16:45', icon: GraduationCap, color: 'text-blue-600' },
+                        { action: 'Novo material de aula disponível para Programação', time: '2 dias atrás', icon: BookOpen, color: 'text-orange-600' }
+                      ].map((activity, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                          <div className="w-8 h-8 bg-background rounded-full flex items-center justify-center">
+                            <activity.icon className={`w-4 h-4 ${activity.color}`} />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{activity.action}</p>
+                            <p className="text-xs text-muted-foreground">{activity.time}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="subjects" className="space-y-8">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">Minhas Disciplinas</h2>
+                <p className="text-muted-foreground">Todas as disciplinas cadastradas no sistema</p>
+              </div>
+            </div>
+
+            {loadingSubjects ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {subjects.map((subject) => (
+                  <Card key={subject.id} className="hover:shadow-glow transition-all duration-300">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-lg">{subject.name}</CardTitle>
+                          <CardDescription>Professor: {subject.teacher_name}</CardDescription>
+                          {subject.schedule && (
+                            <p className="text-sm text-muted-foreground mt-1">{subject.schedule}</p>
+                          )}
+                        </div>
+                        <Badge variant="outline">{subject.current_students}/{subject.max_students}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {subject.description && (
+                          <p className="text-sm text-muted-foreground">{subject.description}</p>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm text-muted-foreground">
+                            Semestre: {subject.semester || 'Não informado'}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" className="flex items-center gap-1">
+                              <BookOpen className="w-4 h-4" />
+                              Conteúdo
+                            </Button>
+                            <Button size="sm" variant="outline" className="flex items-center gap-1">
+                              <GraduationCap className="w-4 h-4" />
+                              Notas
+                            </Button>
+                            <Button size="sm" variant="outline" className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              Atividades
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {subjects.length === 0 && (
+                  <div className="col-span-full text-center py-8">
+                    <p className="text-muted-foreground">Nenhuma disciplina encontrada</p>
+                  </div>
+                )}
+              </div>
             )}
-          </div>
-        </div>
+          </TabsContent>
 
-        {/* Quick Actions Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="hover:shadow-glow transition-all duration-300 cursor-pointer">
-            <CardHeader>
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center mb-2">
-                <BookOpen className="w-5 h-5 text-primary" />
-              </div>
-              <CardTitle>Minhas Disciplinas</CardTitle>
-              <CardDescription>
-                Acompanhe suas disciplinas e cronograma de aulas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full">
-                Acessar Disciplinas
-              </Button>
-            </CardContent>
-          </Card>
+          <TabsContent value="grades" className="space-y-8">
+            <div>
+              <h2 className="text-2xl font-bold">Notas & Desempenho</h2>
+              <p className="text-muted-foreground">Visualize suas notas e progresso acadêmico</p>
+            </div>
 
-          <Card className="hover:shadow-glow transition-all duration-300 cursor-pointer">
-            <CardHeader>
-              <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center mb-2">
-                <FileText className="w-5 h-5 text-accent" />
-              </div>
-              <CardTitle>Notas e Avaliações</CardTitle>
-              <CardDescription>
-                Consulte suas notas e histórico acadêmico
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" className="w-full">
-                Ver Notas
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-glow transition-all duration-300 cursor-pointer">
-            <CardHeader>
-              <div className="w-10 h-10 bg-secondary/30 rounded-lg flex items-center justify-center mb-2">
-                <Calendar className="w-5 h-5 text-secondary-foreground" />
-              </div>
-              <CardTitle>Calendário</CardTitle>
-              <CardDescription>
-                Verifique prazos, provas e eventos importantes
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" className="w-full">
-                Abrir Calendário
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="mt-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Atividades Recentes</CardTitle>
-              <CardDescription>
-                Suas últimas atividades e atualizações do sistema
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                    <BookOpen className="w-4 h-4 text-primary" />
+            <Card>
+              <CardHeader>
+                <CardTitle>Resumo de Desempenho</CardTitle>
+                <CardDescription>Notas consolidadas por disciplina</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingGrades ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Nova atividade em Programação I</p>
-                    <p className="text-xs text-muted-foreground">Prazo: 15 de Janeiro</p>
+                ) : (
+                  <div className="space-y-4">
+                    {subjects.map((subject) => (
+                      <div key={subject.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-semibold text-primary">
+                              {subject.name[0].toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium">{subject.name}</p>
+                            <p className="text-sm text-muted-foreground">Professor: {subject.teacher_name}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <Badge variant="secondary">Média: -</Badge>
+                          <Badge variant="outline">Conceito: -</Badge>
+                        </div>
+                      </div>
+                    ))}
+                    {subjects.length === 0 && (
+                      <p className="text-center text-muted-foreground py-8">
+                        Nenhuma nota disponível
+                      </p>
+                    )}
                   </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="calendar" className="space-y-8">
+            <div>
+              <h2 className="text-2xl font-bold">Calendário Acadêmico</h2>
+              <p className="text-muted-foreground">Datas importantes e prazos acadêmicos</p>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Eventos Próximos</CardTitle>
+                <CardDescription>Próximos eventos e prazos importantes</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {subjects.length > 0 ? (
+                    subjects.map((subject) => (
+                      <div key={subject.id} className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                            <Calendar className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{subject.name}</p>
+                            <p className="text-sm text-muted-foreground">Próximo evento: -</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline">{subject.schedule || 'Sem agenda'}</Badge>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">
+                      Nenhum evento agendado
+                    </p>
+                  )}
                 </div>
-                
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <div className="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center">
-                    <FileText className="w-4 h-4 text-accent" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Nota disponível - Banco de Dados</p>
-                    <p className="text-xs text-muted-foreground">Publicada hoje</p>
-                  </div>
-                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <div className="w-8 h-8 bg-secondary/30 rounded-full flex items-center justify-center">
-                    <Calendar className="w-4 h-4 text-secondary-foreground" />
+          <TabsContent value="settings" className="space-y-8">
+            <div>
+              <h2 className="text-2xl font-bold">Configurações do Perfil</h2>
+              <p className="text-muted-foreground">Configure suas informações pessoais e preferências</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Informações Pessoais</CardTitle>
+                  <CardDescription>Edite suas informações básicas</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {editingProfile ? (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="fullName">Nome Completo</Label>
+                        <Input
+                          id="fullName"
+                          value={profileData.full_name}
+                          onChange={(e) => setProfileData({...profileData, full_name: e.target.value})}
+                          placeholder="Digite seu nome completo"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">E-mail</Label>
+                        <Input
+                          id="email"
+                          value={profileData.email}
+                          onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+                          placeholder="Digite seu e-mail"
+                          type="email"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Telefone</Label>
+                        <Input
+                          id="phone"
+                          value={profileData.phone}
+                          onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+                          placeholder="Digite seu telefone"
+                          type="tel"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="registration">Matrícula</Label>
+                        <Input
+                          id="registration"
+                          value={profileData.student_registration}
+                          onChange={(e) => setProfileData({...profileData, student_registration: e.target.value})}
+                          placeholder="Número de matrícula"
+                          disabled
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-4">
+                        <Button
+                          onClick={handleUpdateProfile}
+                          className="flex items-center gap-2"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                          Salvar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setEditingProfile(false);
+                            loadProfileData();
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Nome Completo</label>
+                        <p className="text-sm">{profile?.full_name || user.email}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">E-mail</label>
+                        <p className="text-sm">{user.email}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Telefone</label>
+                        <p className="text-sm">{profile?.phone || 'Não informado'}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Matrícula</label>
+                        <p className="text-sm">{profile?.student_registration || 'Não informado'}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setEditingProfile(true)}
+                      >
+                        <Edit3 className="w-4 h-4 mr-2" />
+                        Editar Informações
+                      </Button>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Segurança</CardTitle>
+                  <CardDescription>Gerencie sua senha e segurança da conta</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="currentPassword">Senha Atual</Label>
+                      <Input
+                        id="currentPassword"
+                        type="password"
+                        value={passwordData.currentPassword}
+                        onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                        placeholder="Digite sua senha atual"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword">Nova Senha</Label>
+                      <Input
+                        id="newPassword"
+                        type="password"
+                        value={passwordData.newPassword}
+                        onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                        placeholder="Digite sua nova senha"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        value={passwordData.confirmPassword}
+                        onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                        placeholder="Confirme sua nova senha"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleChangePassword}
+                      disabled={!passwordData.newPassword || passwordData.newPassword !== passwordData.confirmPassword}
+                    >
+                      <Lock className="w-4 h-4 mr-2" />
+                      Alterar Senha
+                    </Button>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Prova de Redes - próxima semana</p>
-                    <p className="text-xs text-muted-foreground">20 de Janeiro às 14:00</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                  <Button variant="outline" className="w-full" disabled>
+                    Configurações de Notificação
+                  </Button>
+                  <Button variant="outline" className="w-full" disabled>
+                    Preferências de Privacidade
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

@@ -7,57 +7,75 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, BookOpen, Settings, BarChart3, LogOut, Home, Shield, Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import SubjectModal from '@/components/SubjectModal';
+import StudentModal from '@/components/admin/StudentModal';
+import TeacherModal from '@/components/admin/TeacherModal';
+import { getAllStudents } from '@/services/studentService';
+import { getAllUsers } from '@/services/userService';
+import { getAllTeachers } from '@/services/teacherService';
+import { getConnection } from '@/integrations/mysql/client';
 
 export default function AdminDashboard() {
   const { user, profile, isAdmin, signOut, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [users, setUsers] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [loadingStudents, setLoadingStudents] = useState(false);
   const [totalStudents, setTotalStudents] = useState(0);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [editingSubject, setEditingSubject] = useState<any>(null);
+  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [showTeacherModal, setShowTeacherModal] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<any>(null);
+  const [editingStudent, setEditingStudent] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     if (user && isAdmin) {
       fetchUsers();
       fetchSubjects();
+      fetchTeachers();
+      fetchStudents(); // Buscar estudantes também
     }
   }, [user, isAdmin]);
+
+  const fetchTeachers = async () => {
+    setLoadingTeachers(true);
+    const API_URL = 'http://localhost:4001/api/teachers'; // URL absoluta para o backend
+
+    try {
+      const response = await fetch(API_URL);
+      if (!response.ok) {
+        throw new Error('Falha ao buscar professores da API');
+      }
+      const teacherData = await response.json();
+      setTeachers(teacherData);
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar professores",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingTeachers(false);
+    }
+  };
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
     try {
-      // Fetch profiles with user roles
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Fetch user roles separately
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-
-      if (rolesError) throw rolesError;
-
-      // Combine profiles with their roles
-      const usersWithRoles = profiles?.map(profile => ({
-        ...profile,
-        roles: userRoles?.filter(role => role.user_id === profile.user_id) || []
-      })) || [];
-
-      setUsers(usersWithRoles);
-      setTotalStudents(usersWithRoles.filter(u => 
-        u.roles.some((r: any) => r.role === 'student')
-      ).length);
+      const allUsers = await getAllUsers();
+      setUsers(allUsers);
+      // Contar apenas estudantes ativos (com papel de estudante)
+      const activeStudents = allUsers.filter(user => user.roles.some((r: any) => r.role === 'student'));
+      setTotalStudents(activeStudents.length);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
@@ -70,21 +88,74 @@ export default function AdminDashboard() {
     }
   };
 
-  const deleteUser = async (userId: string) => {
+  const fetchStudents = async () => {
+    setLoadingStudents(true);
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
-      if (error) throw error;
-      
+      const studentData = await getAllStudents();
+      setStudents(studentData);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar estudantes",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  const deleteTeacher = async (teacherId: string) => {
+    const API_URL = `http://localhost:4001/api/teachers/${teacherId}`;
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao deletar professor da API');
+      }
+
       toast({
         title: "Sucesso",
-        description: "Usuário removido com sucesso",
+        description: "Professor removido com sucesso do sistema.",
+      });
+      fetchTeachers(); // Atualiza a lista de professores
+    } catch (error) {
+      console.error('Error deleting teacher:', error);
+      toast({
+        title: "Erro",
+        description: (error as Error).message || "Erro ao deletar professor",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    try {
+      // Remove o estudante via API real
+      const API_URL = `http://localhost:4001/api/students/${userId}`;
+      const response = await fetch(API_URL, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao remover estudante do sistema');
+      }
+
+      toast({
+        title: "Sucesso",
+        description: "Estudante removido com sucesso.",
       });
       fetchUsers();
+      fetchTeachers();
+      fetchStudents(); // Atualiza a lista de estudantes também
     } catch (error) {
       console.error('Error deleting user:', error);
       toast({
         title: "Erro",
-        description: "Erro ao remover usuário",
+        description: (error as Error).message || "Erro ao deletar estudante",
         variant: "destructive",
       });
     }
@@ -92,14 +163,15 @@ export default function AdminDashboard() {
 
   const fetchSubjects = async () => {
     setLoadingSubjects(true);
-    try {
-      const { data, error } = await supabase
-        .from('subjects')
-        .select('*')
-        .order('created_at', { ascending: false });
+    const API_URL = 'http://localhost:4001/api/subjects'; // URL absoluta para o backend
 
-      if (error) throw error;
-      setSubjects(data || []);
+    try {
+      const response = await fetch(API_URL);
+      if (!response.ok) {
+        throw new Error('Falha ao buscar disciplinas da API');
+      }
+      const data = await response.json();
+      setSubjects(data);
     } catch (error) {
       console.error('Error fetching subjects:', error);
       toast({
@@ -113,26 +185,50 @@ export default function AdminDashboard() {
   };
 
   const deleteSubject = async (subjectId: string) => {
-    try {
-      const { error } = await supabase
-        .from('subjects')
-        .delete()
-        .eq('id', subjectId);
+    const API_URL = `http://localhost:4001/api/subjects/${subjectId}`;
 
-      if (error) throw error;
+    try {
+      const response = await fetch(API_URL, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao deletar disciplina da API');
+      }
 
       toast({
         title: "Sucesso",
-        description: "Disciplina removida com sucesso",
+        description: "Disciplina removida com sucesso do sistema.",
       });
-      fetchSubjects();
+      fetchSubjects(); // Atualiza a lista de disciplinas
     } catch (error) {
       console.error('Error deleting subject:', error);
       toast({
         title: "Erro",
-        description: "Erro ao remover disciplina",
+        description: (error as Error).message || "Erro ao deletar disciplina",
         variant: "destructive",
       });
+    }
+  };
+
+  const openStudentModal = (student?: any) => {
+    setEditingStudent(student || null);
+    setShowStudentModal(true);
+  };
+
+  const openUserModal = (user?: any) => {
+    // Verifica se é um estudante ou professor e direciona para o modal apropriado
+    if (user?.roles?.some((r: any) => r.role === 'student')) {
+      setEditingStudent(user);
+      setShowStudentModal(true);
+    } else if (user?.roles?.some((r: any) => r.role === 'teacher')) {
+      setEditingTeacher(user);
+      setShowTeacherModal(true);
+    } else {
+      // Para outros tipos de usuário, usar o modal de estudante como fallback
+      // ou implementar um modal genérico se necessário
+      setEditingStudent(user);
+      setShowStudentModal(true);
     }
   };
 
@@ -141,24 +237,42 @@ export default function AdminDashboard() {
     setShowSubjectModal(true);
   };
 
-  const promoteToAdmin = async (userEmail: string) => {
+  const openTeacherModal = (teacher?: any) => {
+    setEditingTeacher(teacher || null);
+    setShowTeacherModal(true);
+  };
+
+  const promoteToAdmin = async (userId: string) => {
     try {
-      const { data, error } = await supabase.rpc('promote_user_to_admin', {
-        _user_email: userEmail
+      console.log(`Promovendo usuário a admin: ${userId}`);
+      
+      // Chama a API real para atualizar o papel do usuário
+      const response = await fetch(`http://localhost:4001/api/users/${userId}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ role: 'admin' })
       });
-      
-      if (error) throw error;
-      
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao promover usuário');
+      }
+
       toast({
         title: "Sucesso",
-        description: data || "Usuário promovido a administrador",
+        description: "Usuário promovido a administrador com sucesso.",
       });
+      
+      // Atualiza todas as listas para refletir a mudança
       fetchUsers();
+      fetchStudents(); // Atualiza a lista de estudantes também, pois o usuário pode ter sido um estudante
     } catch (error) {
-      console.error('Error promoting user:', error);
+      console.error('Erro ao promover usuário:', error);
       toast({
         title: "Erro",
-        description: "Erro ao promover usuário",
+        description: "Falha ao promover usuário a administrador.",
         variant: "destructive",
       });
     }
@@ -179,21 +293,24 @@ export default function AdminDashboard() {
   // Stats data using real data
   const stats = [
     { title: 'Estudantes Ativos', value: totalStudents.toString(), icon: Users, color: 'text-primary', bgColor: 'bg-primary/10' },
+    { title: 'Professores', value: teachers.length.toString(), icon: Users, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
     { title: 'Disciplinas', value: subjects.length.toString(), icon: BookOpen, color: 'text-accent', bgColor: 'bg-accent/10' },
-    { title: 'Taxa de Aprovação', value: '89%', icon: BarChart3, color: 'text-green-500', bgColor: 'bg-green-500/10' },
     { title: 'Administradores', value: users.filter(u => u.roles.some((r: any) => r.role === 'admin')).length.toString(), icon: Shield, color: 'text-destructive', bgColor: 'bg-destructive/10' }
   ];
 
   const getUserStatus = (user: any) => {
-    if (user.roles.some((r: any) => r.role === 'admin')) return 'Admin';
-    if (user.roles.some((r: any) => r.role === 'student')) return 'Ativo';
+    // Verifica se é admin comparando com o email do admin ou papel de admin
+    if (user.email === 'admin@portal.com' || user.roles?.some((r: any) => r.role === 'admin')) return 'Admin';
+    if (user.roles?.some((r: any) => r.role === 'student')) return 'Ativo';
+    if (user.roles?.some((r: any) => r.role === 'teacher')) return 'Professor';
     return 'Pendente';
   };
 
   const getUserStatusVariant = (status: string) => {
     if (status === 'Admin') return 'destructive';
     if (status === 'Ativo') return 'default';
-    return 'secondary';
+    if (status === 'Professor') return 'secondary';
+    return 'outline';
   };
 
   return (
@@ -218,6 +335,15 @@ export default function AdminDashboard() {
                 <Shield className="w-3 h-3" />
                 Administrador
               </Badge>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => window.location.reload()}
+                title="Atualizar página"
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Atualizar
+              </Button>
               <Button variant="outline" size="sm" asChild>
                 <Link to="/">
                   <Home className="w-4 h-4 mr-2" />
@@ -236,9 +362,11 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-4 max-w-md mx-auto">
+          <TabsList className="grid w-full grid-cols-6 max-w-xl mx-auto">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+            <TabsTrigger value="users">Usuários</TabsTrigger>
             <TabsTrigger value="students">Estudantes</TabsTrigger>
+            <TabsTrigger value="teachers">Professores</TabsTrigger>
             <TabsTrigger value="subjects">Disciplinas</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
           </TabsList>
@@ -272,11 +400,11 @@ export default function AdminDashboard() {
                     Gerenciar Usuários
                   </CardTitle>
                   <CardDescription>
-                    Adicionar, editar e gerenciar estudantes e administradores
+                    Adicionar, editar e gerenciar estudantes, professores e administradores
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full" onClick={() => setActiveTab('students')}>
+                  <Button className="w-full" onClick={() => setActiveTab('users')}>
                     Acessar Usuários
                   </Button>
                 </CardContent>
@@ -347,13 +475,196 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="users" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">Gerenciar Usuários</h2>
+                <p className="text-muted-foreground">Adicione, edite ou remova todos os tipos de usuários do sistema</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  className="flex items-center gap-2"
+                  onClick={() => openStudentModal()}
+                >
+                  <Plus className="w-4 h-4" />
+                  Novo Estudante
+                </Button>
+                <Button
+                  className="flex items-center gap-2"
+                  onClick={() => openTeacherModal()}
+                >
+                  <Plus className="w-4 h-4" />
+                  Novo Professor
+                </Button>
+              </div>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Lista de Todos os Usuários</CardTitle>
+                <CardDescription>
+                  Estudantes, professores e administradores do sistema
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingUsers ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {users.map((user) => {
+                      const status = getUserStatus(user);
+                      const isStudent = user.roles.some((r: any) => r.role === 'student');
+                      const isTeacher = user.roles.some((r: any) => r.role === 'teacher');
+                      return (
+                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-semibold text-primary">
+                                {user.full_name ? user.full_name.split(' ').map((n: string) => n[0]).join('') : user.email[0].toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium">{user.full_name || 'Nome não informado'}</p>
+                              <p className="text-sm text-muted-foreground">{user.email}</p>
+                              {isStudent && user.student_registration && (
+                                <p className="text-xs text-muted-foreground">
+                                  Matrícula: {user.student_registration}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={getUserStatusVariant(status)}>
+                              {status}
+                            </Badge>
+ <div className="flex items-center gap-1">
+                              <Button size="sm" variant="ghost">
+                                <Eye className="w-4 h-4" />
+                              </Button>
+ <Button size="sm" variant="ghost" onClick={() => openUserModal(user)}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              {status !== 'Admin' && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => promoteToAdmin(user.id)}
+                                  title="Promover a Admin"
+                                >
+                                  <Shield className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deleteUser(user.id)}
+                                title="Remover usuário"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {users.length === 0 && (
+                      <p className="text-center text-muted-foreground py-8">
+                        Nenhum usuário encontrado
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="teachers" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">Gerenciar Professores</h2>
+                <p className="text-muted-foreground">Adicione, edite ou remova professores do sistema</p>
+              </div>
+              <Button
+                className="flex items-center gap-2"
+                onClick={() => openTeacherModal()}
+              >
+                <Plus className="w-4 h-4" />
+                Novo Professor
+              </Button>
+            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Lista de Professores</CardTitle>
+                <CardDescription>
+                  Todos os professores cadastrados no sistema
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingTeachers ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {teachers.map((teacher) => (
+                      <div key={teacher.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-semibold text-primary">
+                              {teacher.full_name ? teacher.full_name.split(' ').map((n: string) => n[0]).join('') : teacher.email[0].toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium">{teacher.full_name || 'Nome não informado'}</p>
+                            <p className="text-sm text-muted-foreground">{teacher.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="default">
+                            Professor
+                          </Badge>
+                          <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => openTeacherModal(teacher)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                              variant="ghost"
+                              onClick={() => deleteTeacher(teacher.id)}
+                              title="Remover professor"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {teachers.length === 0 && (
+                      <p className="text-center text-muted-foreground py-8">
+                        Nenhum professor encontrado
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="students" className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold">Gerenciar Estudantes</h2>
                 <p className="text-muted-foreground">Adicione, edite ou remova estudantes do sistema</p>
               </div>
-              <Button className="flex items-center gap-2">
+            <Button
+                className="flex items-center gap-2"
+                onClick={() => openStudentModal()}
+              >
                 <Plus className="w-4 h-4" />
                 Novo Estudante
               </Button>
@@ -367,56 +678,46 @@ export default function AdminDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {loadingUsers ? (
+                {loadingStudents ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {users.map((user) => {
-                      const status = getUserStatus(user);
+                    {students.map((student) => {
+                      const status = 'Ativo'; // Estudantes sempre estão ativos
                       return (
-                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div key={student.id} className="flex items-center justify-between p-4 border rounded-lg">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                               <span className="text-sm font-semibold text-primary">
-                                {user.full_name ? user.full_name.split(' ').map((n: string) => n[0]).join('') : user.email[0].toUpperCase()}
+                                {student.full_name ? student.full_name.split(' ').map((n: string) => n[0]).join('') : student.email[0].toUpperCase()}
                               </span>
                             </div>
                             <div>
-                              <p className="font-medium">{user.full_name || 'Nome não informado'}</p>
-                              <p className="text-sm text-muted-foreground">{user.email}</p>
+                              <p className="font-medium">{student.full_name || 'Nome não informado'}</p>
+                              <p className="text-sm text-muted-foreground">{student.email}</p>
                               <p className="text-xs text-muted-foreground">
-                                Matrícula: {user.student_registration || 'Não informado'}
+                                Matrícula: {student.student_registration || 'Não informado'}
                               </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge variant={getUserStatusVariant(status)}>
+                            <Badge variant="default">
                               {status}
                             </Badge>
                             <div className="flex items-center gap-1">
                               <Button size="sm" variant="ghost">
                                 <Eye className="w-4 h-4" />
                               </Button>
-                              <Button size="sm" variant="ghost">
+                              <Button size="sm" variant="ghost" onClick={() => openStudentModal(student)}>
                                 <Edit className="w-4 h-4" />
                               </Button>
-                              {status !== 'Admin' && (
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost"
-                                  onClick={() => promoteToAdmin(user.email)}
-                                  title="Promover a Admin"
-                                >
-                                  <Shield className="w-4 h-4" />
-                                </Button>
-                              )}
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => deleteUser(user.user_id)}
-                                title="Remover usuário"
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deleteUser(student.id)}
+                                title="Remover estudante"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -425,9 +726,9 @@ export default function AdminDashboard() {
                         </div>
                       );
                     })}
-                    {users.length === 0 && (
+                    {students.length === 0 && (
                       <p className="text-center text-muted-foreground py-8">
-                        Nenhum usuário encontrado
+                        Nenhum estudante encontrado
                       </p>
                     )}
                   </div>
@@ -459,8 +760,8 @@ export default function AdminDashboard() {
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div>
-                          <CardTitle className="text-lg">{subject.name}</CardTitle>
-                          <CardDescription>Professor: {subject.teacher_name}</CardDescription>
+<CardTitle className="text-lg">{subject.name}</CardTitle>
+                          <CardDescription>Professor: {subject.teacher_name || 'Não atribuído'}</CardDescription>
                           {subject.schedule && (
                             <p className="text-sm text-muted-foreground mt-1">{subject.schedule}</p>
                           )}
@@ -478,8 +779,8 @@ export default function AdminDashboard() {
                             Semestre: {subject.semester || 'Não informado'}
                           </div>
                           <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="outline"
                               onClick={() => openSubjectModal(subject)}
                             >
@@ -488,8 +789,8 @@ export default function AdminDashboard() {
                             <Button size="sm" variant="outline">
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="outline"
                               onClick={() => deleteSubject(subject.id)}
                             >
@@ -569,6 +870,20 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Modals */}
+ <StudentModal
+        isOpen={showStudentModal}
+        onClose={() => setShowStudentModal(false)}
+        onSuccess={fetchStudents}
+        student={editingStudent}
+      />
+      <TeacherModal
+        isOpen={showTeacherModal}
+        onClose={() => setShowTeacherModal(false)}
+        onSuccess={fetchTeachers}
+        teacher={editingTeacher}
+      />
     </div>
   );
 }

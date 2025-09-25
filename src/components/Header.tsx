@@ -50,7 +50,7 @@ const Header = () => {
             {user ? (
               <div className="flex items-center gap-3">
                 {isStudent && (
-                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10" asChild>
+                  <Button variant="glass" asChild>
                     <Link to="/student">
                       <User className="w-4 h-4 mr-2" />
                       Área do Aluno
@@ -58,7 +58,7 @@ const Header = () => {
                   </Button>
                 )}
                 {isAdmin && (
-                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10" asChild>
+                  <Button variant="glass" asChild>
                     <Link to="/admin">
                       <User className="w-4 h-4 mr-2" />
                       Painel Admin
@@ -66,8 +66,7 @@ const Header = () => {
                   </Button>
                 )}
                 <Button 
-                  variant="outline" 
-                  className="border-white/20 text-white hover:bg-white/10"
+                  variant="glass" 
                   onClick={signOut}
                 >
                   <LogOut className="w-4 h-4 mr-2" />
@@ -113,8 +112,8 @@ const Header = () => {
                   <>
                     {isStudent && (
                       <Button 
-                        variant="outline" 
-                        className="w-full justify-start border-white/20 text-white hover:bg-white/10"
+                        variant="glass" 
+                        className="w-full justify-start"
                         asChild
                       >
                         <Link to="/student">
@@ -125,8 +124,8 @@ const Header = () => {
                     )}
                     {isAdmin && (
                       <Button 
-                        variant="outline" 
-                        className="w-full justify-start border-white/20 text-white hover:bg-white/10"
+                        variant="glass" 
+                        className="w-full justify-start"
                         asChild
                       >
                         <Link to="/admin">
@@ -136,8 +135,8 @@ const Header = () => {
                       </Button>
                     )}
                     <Button 
-                      variant="outline" 
-                      className="w-full justify-start border-white/20 text-white hover:bg-white/10"
+                      variant="glass" 
+                      className="w-full justify-start"
                       onClick={signOut}
                     >
                       <LogOut className="w-4 h-4 mr-2" />

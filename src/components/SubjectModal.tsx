@@ -1,21 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 interface Subject {
   id: string;
   name: string;
   description?: string;
-  teacher_name: string;
+  teacher_id?: string;
+  teacher_name?: string;
   max_students?: number;
   current_students?: number;
   semester?: string;
   schedule?: string;
+}
+
+interface Teacher {
+  id: string;
+  full_name: string;
+  email: string;
 }
 
 interface SubjectModalProps {
@@ -27,63 +34,111 @@ interface SubjectModalProps {
 
 export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: SubjectModalProps) {
   const [formData, setFormData] = useState({
-    name: subject?.name || '',
-    description: subject?.description || '',
-    teacher_name: subject?.teacher_name || '',
-    max_students: subject?.max_students || 50,
-    semester: subject?.semester || '',
-    schedule: subject?.schedule || ''
+    name: '',
+    description: '',
+    teacher_id: '',
+    max_students: 50,
+    semester: '',
+    schedule: ''
   });
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  useEffect(() => {
+    if (isOpen) {
+      fetchTeachers();
+    }
+  }, [isOpen]);
 
-    try {
-      if (subject) {
-        // Update existing subject
-        const { error } = await supabase
-          .from('subjects')
-          .update(formData)
-          .eq('id', subject.id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Sucesso",
-          description: "Disciplina atualizada com sucesso",
-        });
-      } else {
-        // Create new subject
-        const { error } = await supabase
-          .from('subjects')
-          .insert([formData]);
-
-        if (error) throw error;
-
-        toast({
-          title: "Sucesso",
-          description: "Disciplina criada com sucesso",
-        });
-      }
-
-      onSuccess();
-      onClose();
+  useEffect(() => {
+    if (subject) {
+      setFormData({
+        name: subject.name || '',
+        description: subject.description || '',
+        teacher_id: subject.teacher_id || '',
+        max_students: subject.max_students || 50,
+        semester: subject.semester || '',
+        schedule: subject.schedule || ''
+      });
+    } else {
       setFormData({
         name: '',
         description: '',
-        teacher_name: '',
+        teacher_id: '',
         max_students: 50,
         semester: '',
         schedule: ''
       });
+    }
+  }, [subject]);
+
+  const fetchTeachers = async () => {
+    try {
+      const response = await fetch('http://localhost:4001/api/teachers');
+      if (!response.ok) {
+        throw new Error('Falha ao buscar professores');
+      }
+      const teacherData = await response.json();
+      setTeachers(teacherData);
+    } catch (error) {
+      console.error('Erro ao buscar professores:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar lista de professores",
+        variant: "destructive",
+      });
+    }
+  };
+
+const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const API_URL = 'http://localhost:4001/api/subjects';
+
+    try {
+      if (subject) {
+        // Lógica de atualização (ainda não implementada na API de exemplo)
+        // Para implementar edição, seria necessário adicionar uma rota PUT /api/subjects/:id
+        console.warn("A funcionalidade de editar ainda precisa ser conectada à API.");
+        toast({
+          title: "Funcionalidade não implementada",
+          description: "A edição de disciplinas via API ainda não foi criada.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          teacher_id: formData.teacher_id || null
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Falha ao criar a disciplina');
+      }
+
+      toast({
+        title: "Sucesso",
+        description: "Disciplina criada com sucesso no banco de dados!",
+      });
+
+      onSuccess();
+      onClose();
     } catch (error) {
       console.error('Error saving subject:', error);
       toast({
         title: "Erro",
-        description: "Erro ao salvar disciplina",
+        description: (error as Error).message || "Erro ao salvar disciplina",
         variant: "destructive",
       });
     } finally {
@@ -114,13 +169,22 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="teacher_name">Professor</Label>
-              <Input
-                id="teacher_name"
-                value={formData.teacher_name}
-                onChange={(e) => setFormData({ ...formData, teacher_name: e.target.value })}
-                required
-              />
+              <Label htmlFor="teacher_id">Professor</Label>
+              <Select
+                value={formData.teacher_id}
+                onValueChange={(value) => setFormData({ ...formData, teacher_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um professor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teachers.map((teacher) => (
+                    <SelectItem key={teacher.id} value={teacher.id}>
+                      {teacher.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           
@@ -178,4 +242,4 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
       </DialogContent>
     </Dialog>
   );
-}
+};
