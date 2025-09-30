@@ -17,6 +17,7 @@ const initialFormData: StudentFormData = {
   fullName: '',
   email: '',
   studentRegistration: '',
+  grade: undefined,
 };
 
 export function useStudentCreation(): UseStudentCreationReturn {
@@ -33,6 +34,7 @@ export function useStudentCreation(): UseStudentCreationReturn {
       fullName: student.full_name || student.fullName || '',
       email: student.email || '',
       studentRegistration: student.student_registration || student.studentRegistration || '',
+      grade: student.grade || undefined,
     });
   }, []);
 
@@ -115,6 +117,10 @@ export function useStudentCreation(): UseStudentCreationReturn {
         newErrors.email = ERROR_MESSAGES.required;
       }
 
+      if (!sanitizedData.grade) {
+        newErrors.grade = 'Série é obrigatória';
+      }
+
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
         return;
@@ -177,6 +183,10 @@ export function useStudentCreation(): UseStudentCreationReturn {
         newErrors.email = ERROR_MESSAGES.required;
       }
 
+      if (!sanitizedData.grade) {
+        newErrors.grade = 'Série é obrigatória';
+      }
+
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
         return;
@@ -184,7 +194,7 @@ export function useStudentCreation(): UseStudentCreationReturn {
 
       // Atualizar estudante no banco de dados real (API)
       // Obter conexão e atualizar no banco de dados real
-      const response = await fetch(`http://localhost:4001/api/students/${studentId}`, {
+      const response = await fetch(`http://localhost:4002/api/students/${studentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -193,7 +203,8 @@ export function useStudentCreation(): UseStudentCreationReturn {
           fullName: sanitizedData.fullName,
           email: sanitizedData.email,
           studentRegistration: sanitizedData.studentRegistration, // Mantendo a matrícula existente
-          password: undefined // Não atualizar senha a menos que seja especificamente fornecida
+          grade: sanitizedData.grade
+          // Não atualizar senha a menos que seja especificamente fornecida
         })
       });
 

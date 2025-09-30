@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { subjectService } from '@/services/subjectService';
 
 interface Subject {
   id: string;
@@ -15,7 +16,9 @@ interface Subject {
   teacher_name?: string;
   max_students?: number;
   current_students?: number;
+  grade?: '1º Ano' | '2º Ano' | '3º Ano';
   semester?: string;
+  period?: string;
   schedule?: string;
 }
 
@@ -39,9 +42,12 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
     teacher_id: '',
     max_students: 50,
     semester: '',
-    schedule: ''
+    period: '',
+    schedule: '',
+    grade: ''
   });
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [teachersLoaded, setTeachersLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -52,35 +58,45 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
   }, [isOpen]);
 
   useEffect(() => {
-    if (subject) {
-      setFormData({
-        name: subject.name || '',
-        description: subject.description || '',
-        teacher_id: subject.teacher_id || '',
-        max_students: subject.max_students || 50,
-        semester: subject.semester || '',
-        schedule: subject.schedule || ''
-      });
-    } else {
-      setFormData({
-        name: '',
-        description: '',
-        teacher_id: '',
-        max_students: 50,
-        semester: '',
-        schedule: ''
-      });
+    if (isOpen && teachersLoaded) {
+      if (subject) {
+        const teacherExists = teachers.some(t => t.id === subject.teacher_id);
+        setFormData({
+          name: subject.name || '',
+          description: subject.description || '',
+          teacher_id: teacherExists ? subject.teacher_id || '' : '',
+          max_students: subject.max_students || 50,
+          semester: subject.semester || '',
+          period: subject.period || '',
+          schedule: subject.schedule || '',
+          grade: subject.grade || ''
+        });
+      } else {
+        // Limpa o formulário para o caso de criação
+        setFormData({
+          name: '',
+          description: '',
+          teacher_id: '',
+          max_students: 50,
+          semester: '',
+          period: '',
+          schedule: '',
+          grade: ''
+        });
+      }
     }
-  }, [subject]);
+  }, [isOpen, subject, teachersLoaded, teachers]);
 
   const fetchTeachers = async () => {
+    if (teachersLoaded) return; // Evita buscas repetidas
     try {
-      const response = await fetch('http://localhost:4001/api/teachers');
+      const response = await fetch('http://localhost:4002/api/teachers');
       if (!response.ok) {
         throw new Error('Falha ao buscar professores');
       }
       const teacherData = await response.json();
       setTeachers(teacherData);
+      setTeachersLoaded(true);
     } catch (error) {
       console.error('Erro ao buscar professores:', error);
       toast({
@@ -88,6 +104,7 @@ export default function SubjectModal({ isOpen, onClose, subject, onSuccess }: Su
         description: "Erro ao carregar lista de professores",
         variant: "destructive",
       });
+      setTeachersLoaded(true);
     }
   };
 
@@ -95,42 +112,40 @@ const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const API_URL = 'http://localhost:4001/api/subjects';
-
     try {
       if (subject) {
-        // Lógica de atualização (ainda não implementada na API de exemplo)
-        // Para implementar edição, seria necessário adicionar uma rota PUT /api/subjects/:id
-        console.warn("A funcionalidade de editar ainda precisa ser conectada à API.");
-        toast({
-          title: "Funcionalidade não implementada",
-          description: "A edição de disciplinas via API ainda não foi criada.",
-          variant: "destructive",
+        // Atualizar disciplina existente
+        await subjectService.update(subject.id, {
+          name: formData.name,
+          description: formData.description || undefined,
+          teacher_id: formData.teacher_id || undefined,
+          schedule: formData.schedule || undefined,
+          max_students: formData.max_students,
+          grade: formData.grade as '1º Ano' | '2º Ano' | '3º Ano' || undefined,
+          semester: formData.semester || undefined,
+          period: formData.period || undefined
         });
-        return;
+        toast({
+          title: "Sucesso",
+          description: "Disciplina atualizada com sucesso!",
+        });
+      } else {
+        // Criar nova disciplina
+        await subjectService.create({
+          name: formData.name,
+          description: formData.description || undefined,
+          teacher_id: formData.teacher_id || undefined,
+          schedule: formData.schedule || undefined,
+          max_students: formData.max_students,
+          grade: formData.grade as '1º Ano' | '2º Ano' | '3º Ano' || undefined,
+          semester: formData.semester || undefined,
+          period: formData.period || undefined
+        });
+        toast({
+          title: "Sucesso",
+          description: "Disciplina criada com sucesso no banco de dados!",
+        });
       }
-
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          teacher_id: formData.teacher_id || null
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Falha ao criar a disciplina');
-      }
-
-      toast({
-        title: "Sucesso",
-        description: "Disciplina criada com sucesso no banco de dados!",
-      });
 
       onSuccess();
       onClose();
@@ -171,11 +186,12 @@ const handleSubmit = async (e: React.FormEvent) => {
             <div className="space-y-2">
               <Label htmlFor="teacher_id">Professor</Label>
               <Select
+                key={formData.teacher_id}
                 value={formData.teacher_id}
                 onValueChange={(value) => setFormData({ ...formData, teacher_id: value })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um professor" />
+                  <SelectValue placeholder="Selecione um professor" className="text-foreground" />
                 </SelectTrigger>
                 <SelectContent>
                   {teachers.map((teacher) => (
@@ -220,14 +236,52 @@ const handleSubmit = async (e: React.FormEvent) => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="schedule">Horário</Label>
-            <Input
-              id="schedule"
-              value={formData.schedule}
-              onChange={(e) => setFormData({ ...formData, schedule: e.target.value })}
-              placeholder="Ex: Segunda e Quarta 14:00-16:00"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="schedule">Horário</Label>
+              <Input
+                id="schedule"
+                value={formData.schedule}
+                onChange={(e) => setFormData({ ...formData, schedule: e.target.value })}
+                placeholder="Ex: Segunda e Quarta 14:00-16:00"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="grade">Série</Label>
+              <Select
+                value={formData.grade}
+                onValueChange={(value) => setFormData({ ...formData, grade: value as '1º Ano' | '2º Ano' | '3º Ano' })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a série" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1º Ano">1º Ano</SelectItem>
+                  <SelectItem value="2º Ano">2º Ano</SelectItem>
+                  <SelectItem value="3º Ano">3º Ano</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="period">Período</Label>
+              <Select
+                value={formData.period}
+                onValueChange={(value) => setFormData({ ...formData, period: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1º Período">1º Período</SelectItem>
+                  <SelectItem value="2º Período">2º Período</SelectItem>
+                  <SelectItem value="3º Período">3º Período</SelectItem>
+                  <SelectItem value="4º Período">4º Período</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <DialogFooter>

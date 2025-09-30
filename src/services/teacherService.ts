@@ -1,5 +1,3 @@
-// Serviço para gerenciamento de professores
-
 interface Subject {
   id: number;
   name: string;
@@ -20,13 +18,13 @@ interface Absence {
 
 export const getSubjectsByTeacher = async (teacherId: number): Promise<Subject[]> => {
   try {
-    const API_URL = `http://localhost:4001/api/subjects?teacher_id=${teacherId}`;
+    const API_URL = `http://localhost:4002/api/subjects?teacher_id=${teacherId}`;
     const response = await fetch(API_URL);
     if (!response.ok) {
       throw new Error('Falha ao buscar disciplinas do professor');
     }
     const subjects = await response.json();
-    return subjects.map((subject: any) => ({
+    return subjects.map((subject: { id: number; name: string }) => ({
       id: subject.id,
       name: subject.name
     }));
@@ -49,10 +47,7 @@ export const getAbsencesBySubject = async (subjectId: number): Promise<Absence[]
 };
 
 export const getAllTeachers = async () => {
-  // Agora que o AdminDashboard.tsx faz a chamada diretamente,
-  // esta função pode ser usada como fallback ou removida
-  // pois o AdminDashboard.tsx já faz a chamada para /api/teachers
-  const API_URL = 'http://localhost:4001/api/teachers';
+  const API_URL = 'http://localhost:4002/api/teachers';
   
   try {
     const response = await fetch(API_URL);

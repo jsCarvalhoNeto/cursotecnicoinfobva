@@ -36,7 +36,7 @@ export async function createStudent(data: StudentFormData): Promise<CreateStuden
 
     // Criar estudante via API (removendo studentRegistration do payload pois será gerado automaticamente)
     const { studentRegistration, ...studentDataWithoutRegistration } = sanitizedData;
-    const response = await fetch('http://localhost:4001/api/students', {
+    const response = await fetch('http://localhost:4002/api/students', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -44,7 +44,7 @@ export async function createStudent(data: StudentFormData): Promise<CreateStuden
       body: JSON.stringify({
         ...studentDataWithoutRegistration,
         password: temporaryPassword,
-        role: 'student'
+        grade: sanitizedData.grade
       })
     });
 
@@ -82,7 +82,7 @@ export async function createStudent(data: StudentFormData): Promise<CreateStuden
  */
 export async function updateStudentPassword(userId: string, newPassword: string): Promise<boolean> {
   try {
-    const response = await fetch(`http://localhost:4001/api/students/${userId}/password`, {
+    const response = await fetch(`http://localhost:4002/api/students/${userId}/password`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ export async function updateStudentPassword(userId: string, newPassword: string)
  */
 export async function hasTemporaryPassword(userId: string): Promise<boolean> {
   try {
-    const response = await fetch(`http://localhost:4001/api/students/${userId}`);
+    const response = await fetch(`http://localhost:4002/api/students/${userId}`);
     if (!response.ok) return false;
     
     const student = await response.json();
@@ -121,7 +121,7 @@ export async function getStudentById(userId: string) {
   console.log(`Buscando estudante por ID (API real): ${userId}`);
   
   try {
-    const response = await fetch(`http://localhost:4001/api/students/${userId}`);
+    const response = await fetch(`http://localhost:4002/api/students/${userId}`);
     if (!response.ok) {
       throw new Error('Student not found');
     }
@@ -139,7 +139,7 @@ export async function getAllStudents() {
   console.log("Buscando todos os estudantes (API real)...");
   
   try {
-    const response = await fetch('http://localhost:4001/api/students');
+    const response = await fetch('http://localhost:4002/api/students');
     if (!response.ok) {
       throw new Error('Erro ao buscar estudantes');
     }

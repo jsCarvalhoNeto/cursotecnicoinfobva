@@ -11,6 +11,7 @@ export interface StudentFormData {
   fullName: string;
   email: string;
   studentRegistration?: string;
+  grade?: '1º Ano' | '2º Ano' | '3º Ano';
 }
 
 /**
@@ -97,6 +98,12 @@ export async function validateStudentForm(data: StudentFormData): Promise<Valida
       errors.studentRegistration = 'Esta matrícula já está cadastrada no sistema';
     }
   }
+
+  // Validação da série (obrigatória)
+  if (!data.grade) {
+    errors.grade = 'Série é obrigatória';
+  }
+
   
   return {
     isValid: Object.keys(errors).length === 0,
@@ -155,5 +162,6 @@ export function sanitizeStudentData(data: StudentFormData): StudentFormData {
     email: data.email.trim().toLowerCase(),
     // A matrícula pode ser opcional, então tratamos isso
     studentRegistration: data.studentRegistration ? data.studentRegistration.trim().toUpperCase() : '',
+    grade: data.grade,
   };
 }

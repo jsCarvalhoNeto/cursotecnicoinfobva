@@ -23,7 +23,7 @@ export default function TeacherForm({ onSuccess, teacher }: TeacherFormProps) {
     try {
       if (teacher) {
         // Atualização de professor existente
-        const API_URL = `http://localhost:4001/api/teachers/${teacher.id}`;
+        const API_URL = `http://localhost:4002/api/teachers/${teacher.id}`;
         const response = await fetch(API_URL, {
           method: 'PUT',
           headers: {
@@ -48,7 +48,7 @@ export default function TeacherForm({ onSuccess, teacher }: TeacherFormProps) {
         });
       } else {
         // Criação de novo professor
-        const API_URL = 'http://localhost:4001/api/teachers';
+        const API_URL = 'http://localhost:4002/api/teachers';
         const response = await fetch(API_URL, {
           method: 'POST',
           headers: {

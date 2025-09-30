@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -52,13 +51,11 @@ export default function SubjectDetail() {
 
   const fetchSubject = async () => {
     try {
-      const { data, error } = await supabase
-        .from('subjects')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
+      const response = await fetch(`http://localhost:4002/api/subjects/${id}`);
+      if (!response.ok) {
+        throw new Error('Falha ao buscar disciplina');
+      }
+      const data = await response.json();
       setSubject(data);
     } catch (error) {
       console.error('Error fetching subject:', error);

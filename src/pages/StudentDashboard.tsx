@@ -5,12 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, LogOut, Home, BarChart3, Settings, Calendar, GraduationCap, Users, Edit3, Lock } from 'lucide-react';
+import { LogOut, Home, BarChart3, Settings, Calendar, GraduationCap, Users, Edit3, Lock, BookOpen, FileText, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { updateStudentProfile, changeStudentPassword } from '@/services/studentProfileService';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import logoCurso from '@/assets/logocurso.png';
+import StudentActivitiesTab from '@/components/student/StudentActivitiesTab';
+import StudentGradesPerformanceTab from '@/components/student/StudentGradesPerformanceTab';
+import { getStudentActivityGrades, ActivityGrade } from '@/services/activityService';
 
 export default function StudentDashboard() {
   const { user, profile, isStudent, signOut, loading } = useAuth();
@@ -21,6 +25,7 @@ export default function StudentDashboard() {
   const [loadingGrades, setLoadingGrades] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [pendingActivities, setPendingActivities] = useState(0);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
     full_name: '',
@@ -33,6 +38,8 @@ export default function StudentDashboard() {
     newPassword: '',
     confirmPassword: ''
   });
+  const [activityGrades, setActivityGrades] = useState<ActivityGrade[]>([]);
+  const [loadingActivityGrades, setLoadingActivityGrades] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -60,12 +67,17 @@ export default function StudentDashboard() {
     setLoadingSubjects(true);
     try {
       // Buscar todas as disciplinas cadastradas no sistema
-      const response = await fetch('http://localhost:4001/api/subjects');
+      const response = await fetch('http://localhost:4002/api/subjects');
       if (!response.ok) {
         throw new Error('Erro ao buscar disciplinas');
       }
       const subjectsData = await response.json();
       setSubjects(subjectsData);
+      
+      // Buscar atividades para atualizar o contador de pendentes
+      if (user) {
+        await fetchPendingActivities();
+      }
     } catch (error) {
       console.error('Error fetching subjects:', error);
       toast({
@@ -75,6 +87,24 @@ export default function StudentDashboard() {
       });
     } finally {
       setLoadingSubjects(false);
+    }
+  };
+
+  const fetchPendingActivities = async () => {
+    if (!user) return;
+    
+    try {
+      // Usar a rota específica para buscar atividades do aluno
+      const activityResponse = await fetch('http://localhost:4002/api/activities/student', {
+        credentials: 'include'
+      });
+      
+      if (activityResponse.ok) {
+        const activities = await activityResponse.json();
+        setPendingActivities(activities.length);
+      }
+    } catch (error) {
+      console.error('Error fetching pending activities:', error);
     }
   };
 
@@ -88,6 +118,25 @@ export default function StudentDashboard() {
       console.error('Error fetching grades:', error);
     } finally {
       setLoadingGrades(false);
+    }
+  };
+
+  const fetchActivityGrades = async () => {
+    if (!user) return;
+    
+    setLoadingActivityGrades(true);
+    try {
+      const gradesData = await getStudentActivityGrades();
+      setActivityGrades(gradesData);
+    } catch (error) {
+      console.error('Error fetching activity grades:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar notas das atividades",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingActivityGrades(false);
     }
   };
 
@@ -173,7 +222,7 @@ export default function StudentDashboard() {
   // Stats data for student dashboard
   const stats = [
     { title: 'Minhas Disciplinas', value: subjects.length.toString(), icon: BookOpen, color: 'text-primary', bgColor: 'bg-primary/10' },
-    { title: 'Atividades Pendentes', value: '0', icon: BarChart3, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
+    { title: 'Atividades Pendentes', value: pendingActivities.toString(), icon: BarChart3, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
     { title: 'Notificações', value: notifications.length.toString(), icon: Users, color: 'text-accent', bgColor: 'bg-accent/10' },
     { title: 'Progresso Geral', value: '0%', icon: GraduationCap, color: 'text-green-500', bgColor: 'bg-green-500/10' }
   ];
@@ -195,7 +244,7 @@ export default function StudentDashboard() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Badge variant="default" className="flex items-center gap-1">
                 <BookOpen className="w-3 h-3" />
                 Aluno
@@ -227,9 +276,10 @@ export default function StudentDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-5 max-w-2xl mx-auto mb-8">
+          <TabsList className="grid w-full grid-cols-6 max-w-4xl mx-auto mb-8 gap-3">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="subjects">Minhas Disciplinas</TabsTrigger>
+            <TabsTrigger value="activities">Atividades</TabsTrigger>
             <TabsTrigger value="grades">Notas & Desempenho</TabsTrigger>
             <TabsTrigger value="calendar">Calendário</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
@@ -401,8 +451,8 @@ export default function StudentDashboard() {
                               <GraduationCap className="w-4 h-4" />
                               Notas
                             </Button>
-                            <Button size="sm" variant="outline" className="flex items-center gap-1">
-                              <Calendar className="w-4 h-4" />
+                            <Button size="sm" variant="outline" className="flex items-center gap-1" onClick={() => setActiveTab('activities')}>
+                              <FileText className="w-4 h-4" />
                               Atividades
                             </Button>
                           </div>
@@ -421,51 +471,7 @@ export default function StudentDashboard() {
           </TabsContent>
 
           <TabsContent value="grades" className="space-y-8">
-            <div>
-              <h2 className="text-2xl font-bold">Notas & Desempenho</h2>
-              <p className="text-muted-foreground">Visualize suas notas e progresso acadêmico</p>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Resumo de Desempenho</CardTitle>
-                <CardDescription>Notas consolidadas por disciplina</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loadingGrades ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {subjects.map((subject) => (
-                      <div key={subject.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-semibold text-primary">
-                              {subject.name[0].toUpperCase()}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium">{subject.name}</p>
-                            <p className="text-sm text-muted-foreground">Professor: {subject.teacher_name}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <Badge variant="secondary">Média: -</Badge>
-                          <Badge variant="outline">Conceito: -</Badge>
-                        </div>
-                      </div>
-                    ))}
-                    {subjects.length === 0 && (
-                      <p className="text-center text-muted-foreground py-8">
-                        Nenhuma nota disponível
-                      </p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <StudentGradesPerformanceTab />
           </TabsContent>
 
           <TabsContent value="calendar" className="space-y-8">
@@ -504,6 +510,10 @@ export default function StudentDashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="activities" className="space-y-8">
+            <StudentActivitiesTab />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-8">

@@ -1,26 +1,39 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { BookOpen, LogOut, Home, Edit } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { BookOpen, Users, BarChart3, GraduationCap } from 'lucide-react';
 import SubjectModal from '@/components/SubjectModal';
-import { useTeacherData } from '@/hooks/useTeacherData';
+import { TeacherDashboardProvider, useTeacherDashboard } from '@/contexts/TeacherDashboardContext';
+import { Subject } from '@/services/teacherDashboardService';
+import TeacherSubjectsTab from '@/components/teacher/TeacherSubjectsTab';
+import TeacherStudentsTab from '@/components/teacher/TeacherStudentsTab';
+import TeacherGradesActivitiesTab from '@/components/teacher/TeacherGradesActivitiesTab';
+import TeacherCalendarTab from '@/components/teacher/TeacherCalendarTab';
+import TeacherSettingsTab from '@/components/teacher/TeacherSettingsTab';
+import TeacherDashboardLayout from '@/layouts/TeacherDashboardLayout';
 
-export default function TeacherDashboard() {
+function TeacherDashboardContent() {
   const { user, profile, isTeacher, signOut, loading: authLoading } = useAuth();
-  const { subjects, loading: subjectsLoading, error, refetch } = useTeacherData();
+  const { subjects, students, loading: subjectsLoading, error, refetch, editingProfile, setEditingProfile, setActiveTab, activeTab } = useTeacherDashboard();
   const [showSubjectModal, setShowSubjectModal] = useState(false);
-  const [editingSubject, setEditingSubject] = useState<any>(null);
+  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+  const { toast } = useToast();
 
-  const openSubjectModal = (subject?: any) => {
+  const openSubjectModal = (subject?: Subject) => {
     setEditingSubject(subject || null);
     setShowSubjectModal(true);
   };
 
-  if (authLoading) {
+  // Stats data for teacher dashboard
+  const stats = [
+    { title: 'Minhas Disciplinas', value: subjects.length.toString(), icon: BookOpen, color: 'text-primary', bgColor: 'bg-primary/10' },
+    { title: 'Meus Alunos', value: students.length.toString(), icon: Users, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
+    { title: 'Atividades Pendentes', value: '0', icon: BarChart3, color: 'text-accent', bgColor: 'bg-accent/10' },
+    { title: 'Notificações', value: '0', icon: GraduationCap, color: 'text-green-500', bgColor: 'bg-green-500/10' }
+  ];
+
+ if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -33,96 +46,31 @@ export default function TeacherDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold">Painel do Professor</h1>
-                <p className="text-sm text-muted-foreground">
-                  Bem-vindo, {profile?.full_name || user.email}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <BookOpen className="w-3 h-3" />
-                Professor
-              </Badge>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/">
-                  <Home className="w-4 h-4 mr-2" />
-                  Portal
-                </Link>
-              </Button>
-              <Button variant="outline" size="sm" onClick={signOut}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Sair
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <TeacherDashboardLayout 
+      stats={stats}
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+    >
+      {[
+        <TeacherSubjectsTab 
+          key="subjects"
+          openSubjectModal={openSubjectModal}
+        />,
+        <TeacherStudentsTab key="students" />,
+        <TeacherGradesActivitiesTab key="grades" />,
+        <TeacherCalendarTab key="calendar" />,
+        <TeacherSettingsTab 
+          key="settings"
+        />
+      ]}
+    </TeacherDashboardLayout>
+  );
+}
 
-      <main className="container mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold mb-6">Minhas Disciplinas</h2>
-        {subjectsLoading && (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        )}
-        {error && (
-          <div className="col-span-full text-center py-8 text-red-500">
-            <p>{error}</p>
-          </div>
-        )}
-        {!subjectsLoading && !error && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {subjects.map((subject) => (
-              <Card key={subject.id} className="hover:shadow-glow transition-all duration-300">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">{subject.name}</CardTitle>
-                      {/* Esses campos (teacher_name, schedule, etc.) podem não existir no mock, ajuste conforme necessário */}
-                      <CardDescription>ID da Matéria: {subject.id}</CardDescription>
-                    </div>
-                    <Badge variant="outline">Mock</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openSubjectModal(subject)}
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Ver/Editar
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            {subjects.length === 0 && (
-              <div className="col-span-full text-center py-8">
-                <p className="text-muted-foreground">Nenhuma disciplina encontrada</p>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-
-      <SubjectModal
-        isOpen={showSubjectModal}
-        onClose={() => setShowSubjectModal(false)}
-        subject={editingSubject}
-        onSuccess={refetch}
-      />
-    </div>
+export default function TeacherDashboard() {
+  return (
+    <TeacherDashboardProvider>
+      <TeacherDashboardContent />
+    </TeacherDashboardProvider>
   );
 }

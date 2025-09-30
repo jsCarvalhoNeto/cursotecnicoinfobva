@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Users, Calendar, BookOpen } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Clock, Users, BookOpen } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
@@ -29,13 +28,12 @@ const Subjects = () => {
 
   const fetchSubjects = async () => {
     try {
-      const { data, error } = await supabase
-        .from('subjects')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setSubjects(data || []);
+      const response = await fetch('http://localhost:4002/api/subjects');
+      if (!response.ok) {
+        throw new Error('Falha ao buscar disciplinas');
+      }
+      const data = await response.json();
+      setSubjects(data);
     } catch (error) {
       console.error('Error fetching subjects:', error);
     } finally {

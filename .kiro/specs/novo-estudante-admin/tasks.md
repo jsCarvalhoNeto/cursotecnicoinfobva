@@ -28,7 +28,7 @@
 
 - [x] 4. Implementar lógica de criação de estudante
 
-  - Criar função para criação de usuário via Supabase Auth
+  - Criar função para criação de usuário via banco de dados MySQL
   - Implementar geração automática de senha temporária
   - Adicionar tratamento de erros específicos
   - Integrar com triggers existentes do banco de dados

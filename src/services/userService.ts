@@ -18,7 +18,7 @@ export async function getAllUsers(): Promise<User[]> {
   console.log("Buscando todos os usuários (API real)...");
   
   try {
-    const response = await fetch('http://localhost:4001/api/users');
+    const response = await fetch('http://localhost:4002/api/users');
     if (!response.ok) {
       throw new Error('Erro ao buscar usuários');
     }

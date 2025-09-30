@@ -6,6 +6,7 @@ export interface StudentFormData {
   fullName: string;
   email: string;
   studentRegistration?: string;
+  grade?: '1º Ano' | '2º Ano' | '3º Ano';
 }
 
 export interface StudentModalState {

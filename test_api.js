@@ -1,26 +1,24 @@
-// Usando o fetch nativo do Node.js (disponível a partir do Node.js 18+)
-// Se não estiver disponível, usaremos https
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
-async function testApi() {
+async function testLogin() {
   try {
-    const response = await fetch('http://localhost:3001/api/teachers', {
+    const response = await fetch('http://localhost:4001/api/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        full_name: 'Teste Professor',
-        email: 'prof.teste@email.com',
-        password: 'senha123'
+        email: 'hudsondasilva@gmail.com',
+        password: 'CCD5jR3#Ygm@'
       })
     });
-
+    
     const result = await response.json();
     console.log('Resposta da API:', result);
     console.log('Status:', response.status);
   } catch (error) {
-    console.error('Erro na requisição:', error.message);
+    console.error('Erro na requisição:', error);
   }
 }
 
-testApi();
+testLogin();
