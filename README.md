@@ -33,12 +33,12 @@ src/
 - Recuperação de informações do usuário autenticado
 
 ### Estudantes
-- Criação, leitura, atualização e exclusão de estudantes
+- Criação, leitura, atualização exclusão de estudantes
 - Busca de disciplinas do estudante
 - Filtragem por série
 
 ### Professores
-- Criação, leitura, atualização e exclusão de professores
+- Criação, leitura, atualização exclusão de professores
 - Associação de disciplinas aos professores
 - Busca de alunos e disciplinas do professor
 - Atividades pendentes e calendário
@@ -74,6 +74,53 @@ npm start
 # ou para desenvolvimento
 npm run dev
 ```
+
+## Deploy para Produção
+
+### Pré-requisitos no Servidor de Produção
+- Node.js (versão LTS)
+- npm
+- MySQL Server
+- Nginx
+- PM2 (instalado globalmente: `npm install -g pm2`)
+
+### Passos para Deploy
+
+1. **Configurar o banco de dados:**
+   - Crie o banco de dados no servidor MySQL
+   - Execute o schema.sql para criar as tabelas
+   - Configure as credenciais no `.env`
+
+2. **Configurar variáveis de ambiente:**
+   - Crie o arquivo `.env` com as configurações de produção
+   - Use o exemplo `.env.production.example` como base
+
+3. **Fazer o deploy dos arquivos:**
+   ```bash
+   # Instalar dependências de produção
+   npm install --production
+   
+   # Iniciar a aplicação com PM2
+   pm2 start ecosystem.config.js
+   
+   # Salvar configuração do PM2
+   pm2 save
+   ```
+
+4. **Configurar Nginx como proxy reverso:**
+   - Crie o arquivo de configuração no Nginx
+   - Configure SSL com Let's Encrypt
+   - Reinicie o Nginx
+
+5. **Configurar auto-start do PM2:**
+   ```bash
+   pm2 startup
+   ```
+
+### Arquivos Importantes para Deploy
+- `ecosystem.config.js` - Configuração do PM2
+- `deploy.sh` - Script de deploy automatizado
+- `.env.production.example` - Exemplo de variáveis de produção
 
 ## Melhorias da Refatoração
 

@@ -15,9 +15,12 @@ interface ExtendedStudentActivity {
   file_path: string | null;
   file_name: string | null;
   created_at: string;
+  deadline: string | null;       // Campo para prazo final
   status: 'pending' | 'submitted' | 'completed';
   student_grade?: number | string | null; // Campo opcional que vem da API (pode ser number ou string)
   grade_date?: string | null;    // Campo opcional que vem da API
+  period?: string | null;        // Campo opcional para período
+  evaluation_type?: string | null; // Campo opcional para tipo de avaliação
 }
 
 export default function StudentGradesPerformanceTab() {
@@ -25,9 +28,11 @@ export default function StudentGradesPerformanceTab() {
   const [activities, setActivities] = useState<ExtendedStudentActivity[]>([]);
   const [filteredActivities, setFilteredActivities] = useState<ExtendedStudentActivity[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterSubject, setFilterSubject] = useState('');
+ const [filterSubject, setFilterSubject] = useState('');
   const [filterTeacher, setFilterTeacher] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterPeriod, setFilterPeriod] = useState('');
+  const [filterEvaluationType, setFilterEvaluationType] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -38,8 +43,7 @@ export default function StudentGradesPerformanceTab() {
 
   // Funções para toggle dos filtros
   const handleSubjectChange = (value: string) => {
-    if (value === filterSubject) {
-      // Se o valor é o mesmo que já está selecionado, limpa o filtro
+    if (value === 'all') {
       setFilterSubject('');
     } else {
       setFilterSubject(value);
@@ -47,8 +51,7 @@ export default function StudentGradesPerformanceTab() {
   };
 
   const handleTeacherChange = (value: string) => {
-    if (value === filterTeacher) {
-      // Se o valor é o mesmo que já está selecionado, limpa o filtro
+    if (value === 'all') {
       setFilterTeacher('');
     } else {
       setFilterTeacher(value);
@@ -56,11 +59,26 @@ export default function StudentGradesPerformanceTab() {
   };
 
   const handleStatusChange = (value: string) => {
-    if (value === filterStatus) {
-      // Se o valor é o mesmo que já está selecionado, limpa o filtro
+    if (value === 'all') {
       setFilterStatus('');
     } else {
       setFilterStatus(value);
+    }
+  };
+
+  const handlePeriodChange = (value: string) => {
+    if (value === 'all') {
+      setFilterPeriod('');
+    } else {
+      setFilterPeriod(value);
+    }
+  };
+
+  const handleEvaluationTypeChange = (value: string) => {
+    if (value === 'all') {
+      setFilterEvaluationType('');
+    } else {
+      setFilterEvaluationType(value);
     }
   };
 
@@ -95,9 +113,19 @@ export default function StudentGradesPerformanceTab() {
     if (filterStatus) {
       filtered = filtered.filter(activity => activity.status === filterStatus);
     }
+
+    // Filtro por período
+    if (filterPeriod) {
+      filtered = filtered.filter(activity => activity.period === filterPeriod);
+    }
+
+    // Filtro por tipo de avaliação
+    if (filterEvaluationType) {
+      filtered = filtered.filter(activity => activity.evaluation_type === filterEvaluationType);
+    }
     
     setFilteredActivities(filtered);
-  }, [activities, searchTerm, filterSubject, filterTeacher, filterStatus]);
+  }, [activities, searchTerm, filterSubject, filterTeacher, filterStatus, filterPeriod, filterEvaluationType]);
 
   const fetchActivities = async () => {
     if (!user) return;
@@ -114,7 +142,13 @@ export default function StudentGradesPerformanceTab() {
       }
       
       const activitiesData = await response.json();
-      setActivities(activitiesData);
+      // Garantir que os campos period e evaluation_type estejam presentes
+      const activitiesWithDefaults = activitiesData.map((activity: any) => ({
+        ...activity,
+        period: activity.period || null,
+        evaluation_type: activity.evaluation_type || null
+      }));
+      setActivities(activitiesWithDefaults);
     } catch (error) {
       console.error('Error fetching activities:', error);
     } finally {
@@ -154,6 +188,14 @@ export default function StudentGradesPerformanceTab() {
     return [...new Set(activities.map(a => a.teacher_name))].filter(Boolean).sort();
   };
 
+  const getUniquePeriods = () => {
+    return [...new Set(activities.map(a => a.period))].filter(Boolean).sort();
+  };
+
+  const getUniqueEvaluationTypes = () => {
+    return [...new Set(activities.map(a => a.evaluation_type))].filter(Boolean).sort();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -173,7 +215,7 @@ export default function StudentGradesPerformanceTab() {
         </div>
 
         {/* Filtros */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-muted/20 rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 p-4 bg-muted/20 rounded-lg">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
             <Input
@@ -188,6 +230,7 @@ export default function StudentGradesPerformanceTab() {
               <SelectValue placeholder="Disciplina" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">Mostrar todos</SelectItem>
               {getUniqueSubjects().map(subject => (
                 <SelectItem key={subject} value={subject}>{subject}</SelectItem>
               ))}
@@ -198,6 +241,7 @@ export default function StudentGradesPerformanceTab() {
               <SelectValue placeholder="Professor" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">Mostrar todos</SelectItem>
               {getUniqueTeachers().map(teacher => (
                 <SelectItem key={teacher} value={teacher}>{teacher}</SelectItem>
               ))}
@@ -208,9 +252,32 @@ export default function StudentGradesPerformanceTab() {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">Mostrar todos</SelectItem>
               <SelectItem value="pending">Pendente</SelectItem>
               <SelectItem value="submitted">Enviado</SelectItem>
               <SelectItem value="completed">Concluído</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterPeriod} onValueChange={handlePeriodChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Mostrar todos</SelectItem>
+              {getUniquePeriods().map(period => (
+                <SelectItem key={period} value={period}>{period}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterEvaluationType} onValueChange={handleEvaluationTypeChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Tipo de Avaliação" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Mostrar todos</SelectItem>
+              {getUniqueEvaluationTypes().map(evaluationType => (
+                <SelectItem key={evaluationType} value={evaluationType}>{evaluationType}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <div className="flex items-center justify-center text-sm text-muted-foreground">
@@ -230,6 +297,7 @@ export default function StudentGradesPerformanceTab() {
                   <th className="text-left p-4 font-medium text-muted-foreground">Atividade</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Professor</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Data de Envio</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground">Prazo Final</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Nota</th>
                 </tr>
@@ -253,6 +321,11 @@ export default function StudentGradesPerformanceTab() {
                         </div>
                       </td>
                       <td className="p-4">
+                        <div className="text-sm">
+                          {activity.deadline ? new Date(activity.deadline).toLocaleDateString('pt-BR') : '-'}
+                        </div>
+                      </td>
+                      <td className="p-4">
                         {getStatusBadge(activity.status)}
                       </td>
                       <td className="p-4">
@@ -264,7 +337,7 @@ export default function StudentGradesPerformanceTab() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
                       Nenhuma atividade encontrada.
                     </td>
                   </tr>
@@ -279,7 +352,7 @@ export default function StudentGradesPerformanceTab() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-blue-60">
               {filteredActivities.length}
             </div>
             <div className="text-sm text-muted-foreground">Total de Atividades</div>
@@ -287,7 +360,7 @@ export default function StudentGradesPerformanceTab() {
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-60">
+            <div className="text-2xl font-bold text-green-600">
               {filteredActivities.filter(a => a.student_grade !== null && a.student_grade !== undefined && a.student_grade !== '').length}
             </div>
             <div className="text-sm text-muted-foreground">Com Notas</div>
@@ -295,7 +368,7 @@ export default function StudentGradesPerformanceTab() {
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-orange-60">
+            <div className="text-2xl font-bold text-orange-600">
               {(() => {
                 const totalPoints = filteredActivities
                   .map(a => a.student_grade !== null && a.student_grade !== undefined && a.student_grade !== '' ? Number(a.student_grade) : 0)
@@ -309,7 +382,7 @@ export default function StudentGradesPerformanceTab() {
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-blue-60">
               {(() => {
                 const validGrades = filteredActivities
                   .map(a => a.student_grade !== null && a.student_grade !== undefined && a.student_grade !== '' ? Number(a.student_grade) : null)
