@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const port = process.env.PORT || 4001; // Mudando para porta 401 para evitar conflitos
+const port = process.env.PORT || 4002; // Porta local configurada para 4002
 
 // Middleware para Content Security Policy
 app.use((req, res, next) => {
@@ -49,10 +49,10 @@ app.get('*', (req, res) => {
 // Configuração da conexão com o banco de dados
 console.log('Banco de dados configurado:', process.env.DB_NAME);
 const dbConfig = {
-  host: process.env.DB_HOST || 'mysql.railway.internal',
+  host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'railway',
+  password: process.env.DB_PASSWORD || '', // Senha vazia para phpMyAdmin
+  database: process.env.DB_NAME || 'josedo64_sisctibalbina',
   port: process.env.DB_PORT || 3306,
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 };

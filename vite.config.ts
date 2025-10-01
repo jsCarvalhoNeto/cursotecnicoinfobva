@@ -6,6 +6,7 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
+    allowedHosts: ["all", "frontend-production-f4dc.up.railway.app"],
     host: "::",
     port: 8080,
   },

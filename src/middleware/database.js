@@ -6,18 +6,35 @@ dotenv.config();
 
 // Configuração da conexão com o banco de dados
 export const dbConfig = {
-  host: process.env.DB_HOST || 'mysql.railway.internal',
+  host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'hKqzfPhyDJLAJujRUPjZebecKknlbMVN',
-  database: process.env.DB_NAME || 'railway',
+  password: process.env.DB_PASSWORD || '', // Senha vazia para phpMyAdmin
+  database: process.env.DB_NAME || 'josedo64_sisctibalbina',
   port: process.env.DB_PORT || 3306,
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 };
 
-// Função para testar conexão com MySQL
+// Função para testar conexão com MySQL e verificar se tabelas existem
 async function testMySQLConnection() {
   try {
     const connection = await mysql.createConnection(dbConfig);
+    
+    // Verificar se as tabelas principais existem
+    const requiredTables = ['users', 'profiles', 'user_roles', 'subjects'];
+    for (const table of requiredTables) {
+      const [result] = await connection.execute(`
+        SELECT COUNT(*) as count 
+        FROM information_schema.tables 
+        WHERE table_schema = ? AND table_name = ?
+      `, [dbConfig.database, table]);
+      
+      if (result[0].count === 0) {
+        console.log(`Tabela ${table} não encontrada no banco de dados ${dbConfig.database}`);
+        await connection.end();
+        return false;
+      }
+    }
+    
     await connection.end();
     return true;
   } catch (error) {
