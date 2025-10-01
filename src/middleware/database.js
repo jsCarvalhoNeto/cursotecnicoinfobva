@@ -6,10 +6,10 @@ dotenv.config();
 
 // Configuração da conexão com o banco de dados
 export const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || 'mysql.railway.internal',
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'informatica_wave'
+  password: process.env.DB_PASSWORD || 'hKqzfPhyDJLAJujRUPjZebecKknlbMVN',
+  database: process.env.DB_NAME || 'railway'
 };
 
 // Função para testar conexão com MySQL
