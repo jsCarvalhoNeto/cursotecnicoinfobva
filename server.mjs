@@ -8,7 +8,16 @@ import bcrypt from 'bcrypt';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 4001; // Mudando para porta 4001 para evitar conflitos
+const port = process.env.PORT || 4001; // Mudando para porta 401 para evitar conflitos
+
+// Middleware para Content Security Policy
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://r2cdn.perplexity.ai; connect-src 'self' https:; frame-src 'self'; object-src 'none';");
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
 
 // Configurações do CORS para permitir requisições do seu frontend
 app.use(cors({
@@ -21,10 +30,12 @@ app.use(cookieParser());
 // Configuração da conexão com o banco de dados
 console.log('Banco de dados configurado:', process.env.DB_NAME);
 const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || 'mysql.railway.internal',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'informatica_wave'
+  database: process.env.DB_NAME || 'railway',
+  port: process.env.DB_PORT || 3306,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 };
 
 // Rota de teste

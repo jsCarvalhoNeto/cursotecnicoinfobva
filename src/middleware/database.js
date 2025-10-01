@@ -9,7 +9,9 @@ export const dbConfig = {
   host: process.env.DB_HOST || 'mysql.railway.internal',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || 'hKqzfPhyDJLAJujRUPjZebecKknlbMVN',
-  database: process.env.DB_NAME || 'railway'
+  database: process.env.DB_NAME || 'railway',
+  port: process.env.DB_PORT || 3306,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 };
 
 // Função para testar conexão com MySQL
