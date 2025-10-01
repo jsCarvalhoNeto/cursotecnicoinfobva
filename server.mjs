@@ -4,15 +4,20 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcrypt';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 4001; // Mudando para porta 401 para evitar conflitos
 
 // Middleware para Content Security Policy
 app.use((req, res, next) => {
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://r2cdn.perplexity.ai; connect-src 'self' https:; frame-src 'self'; object-src 'none';");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://r2cdn.perplexity.ai https://fonts.gstatic.com https://fonts.googleapis.com https://*.gstatic.com; connect-src 'self' https:; frame-src 'self'; object-src 'none';");
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
@@ -26,6 +31,20 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+
+// Servir arquivos estáticos do diretório dist (build do frontend)
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Rota para servir o index.html para todas as rotas que não são API
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) {
+    // Se for uma rota da API, continue normalmente
+    next();
+  } else {
+    // Para todas as outras rotas, sirva o index.html
+    res.sendFile(path.join(__dirname, '../dist', 'index.html'));
+  }
+});
 
 // Configuração da conexão com o banco de dados
 console.log('Banco de dados configurado:', process.env.DB_NAME);
