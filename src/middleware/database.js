@@ -1,9 +1,6 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
-<<<<<<< HEAD
-=======
 import { mockDbUtils } from '../lib/mockDatabase.js';
->>>>>>> 68a9619f582468725f718218d06636d2704b9e43
 
 dotenv.config();
 
@@ -15,14 +12,6 @@ export const dbConfig = {
   database: process.env.DB_NAME || 'informatica_wave'
 };
 
-<<<<<<< HEAD
-// Middleware para criar conexão com banco de dados
-export const dbConnectionMiddleware = async (req, res, next) => {
-  try {
-    req.db = await mysql.createConnection(dbConfig);
-    await req.db.beginTransaction();
-    console.log('Conexão com banco de dados estabelecida e transação iniciada');
-=======
 // Função para testar conexão com MySQL
 async function testMySQLConnection() {
   try {
@@ -53,24 +42,15 @@ export const dbConnectionMiddleware = async (req, res, next) => {
       req.dbType = 'mock';
       console.log('Usando banco de dados mockado');
     }
->>>>>>> 68a9619f582468725f718218d06636d2704b9e43
   } catch (error) {
     console.error('Erro ao conectar ao banco de dados:', error);
     res.status(500).json({ error: 'Erro ao conectar ao banco de dados.' });
     return;
-<<<<<<< HEAD
- }
-  next();
-};
-
-// Middleware para commit/rollback da transação
-=======
   }
   next();
 };
 
 // Middleware para commit/rollback da transação (ou operações mockadas)
->>>>>>> 68a9619f582468725f718218d06636d2704b9e43
 export const transactionMiddleware = async (req, res, next) => {
   const originalSend = res.send;
   
@@ -82,17 +62,6 @@ export const transactionMiddleware = async (req, res, next) => {
     transactionFinished = true;
     
     try {
-<<<<<<< HEAD
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        await req.db?.commit();
-      } else {
-        await req.db?.rollback();
-      }
-    } catch (error) {
-      console.error('Erro ao finalizar transação:', error);
-    } finally {
-      await req.db?.end();
-=======
       if (req.dbType === 'mysql') {
         // Operações para MySQL real
         if (res.statusCode >= 20 && res.statusCode < 300) {
@@ -107,7 +76,6 @@ export const transactionMiddleware = async (req, res, next) => {
       }
     } catch (error) {
       console.error('Erro ao finalizar transação:', error);
->>>>>>> 68a9619f582468725f718218d06636d2704b9e43
     }
   };
   
@@ -134,13 +102,9 @@ export const transactionMiddleware = async (req, res, next) => {
 // Função auxiliar para rollback em caso de erro
 export const rollbackOnError = async (db) => {
   try {
-<<<<<<< HEAD
-    await db?.rollback();
-=======
     if (db && db.rollback) {
       await db.rollback();
     }
->>>>>>> 68a9619f582468725f718218d06636d2704b9e43
   } catch (rollbackError) {
     console.error('Erro ao fazer rollback:', rollbackError);
   }
