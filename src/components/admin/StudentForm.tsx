@@ -2,11 +2,12 @@
  * Formulário para criação de estudantes
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, User, Mail, IdCard, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, User, Mail, GraduationCap, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { StudentFormData } from '@/types/student';
 
 interface StudentFormProps {
@@ -17,6 +18,7 @@ interface StudentFormProps {
   onChange: (field: keyof StudentFormData, value: string) => void;
   onSubmit: () => void;
   onValidateField: (field: keyof StudentFormData) => Promise<void>;
+  isEditing?: boolean;
 }
 
 export default function StudentForm({
@@ -188,6 +190,38 @@ export default function StudentForm({
           {errors.studentRegistration}
         </div>
       )}
+
+      {/* Campo Série */}
+      <div className="space-y-2">
+        <Label htmlFor="grade" className="text-sm font-medium">
+          Série *
+        </Label>
+        <div className="relative">
+          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-10">
+            <GraduationCap className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <Select
+            value={formData.grade || ''}
+            onValueChange={(value: '1º Ano' | '2º Ano' | '3º Ano') => handleFieldChange('grade', value)}
+          >
+            <SelectTrigger className="pl-10 pr-3">
+              <SelectValue placeholder="Selecione a série" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1º Ano">1º Ano</SelectItem>
+              <SelectItem value="2º Ano">2º Ano</SelectItem>
+              <SelectItem value="3º Ano">3º Ano</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {errors.grade && (
+          <div className="flex items-center gap-1 text-sm text-destructive">
+            <AlertCircle className="w-3 h-3" />
+            {errors.grade}
+          </div>
+        )}
+      </div>
+
 
       {/* Informações adicionais */}
       <div className="bg-muted/50 p-4 rounded-lg">

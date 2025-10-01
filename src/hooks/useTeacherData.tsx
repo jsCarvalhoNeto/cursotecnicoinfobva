@@ -1,31 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getSubjectsByTeacher, getGradesBySubject, getAbsencesBySubject } from '@/services/teacherService'; // Esses serviços precisarão ser criados
 import { useAuth } from './useAuth';
-
-// Supondo que essas interfaces/tipos existam em algum lugar
-interface Subject {
-  id: number;
-  name: string;
-}
-
-interface Grade {
-  id: number;
-  studentName: string;
-  value: number;
-}
-
-interface Absence {
-  id: number;
-  studentName: string;
-  date: string;
-  present: boolean;
-}
+import { getTeacherSubjects, Subject } from '@/services/teacherDashboardService';
 
 export const useTeacherData = () => {
   const { user, isTeacher } = useAuth();
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [grades, setGrades] = useState<Record<number, Grade[]>>({});
-  const [absences, setAbsences] = useState<Record<number, Absence[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,38 +17,21 @@ export const useTeacherData = () => {
     try {
       setLoading(true);
       setError(null);
-      const teacherSubjects = await getSubjectsByTeacher(user.id);
+      console.log('Buscando disciplinas para o professor:', user.id);
+      const teacherSubjects = await getTeacherSubjects(user.id);
+      console.log('Disciplinas retornadas pela API:', teacherSubjects);
       setSubjects(teacherSubjects);
-
-      const gradesPromises = teacherSubjects.map(subject => getGradesBySubject(subject.id));
-      const absencesPromises = teacherSubjects.map(subject => getAbsencesBySubject(subject.id));
-
-      const gradesResults = await Promise.all(gradesPromises);
-      const absencesResults = await Promise.all(absencesPromises);
-
-      const gradesMap: Record<number, Grade[]> = {};
-      teacherSubjects.forEach((subject, index) => {
-        gradesMap[subject.id] = gradesResults[index];
-      });
-      setGrades(gradesMap);
-
-      const absencesMap: Record<number, Absence[]> = {};
-      teacherSubjects.forEach((subject, index) => {
-        absencesMap[subject.id] = absencesResults[index];
-      });
-      setAbsences(absencesMap);
-
+      setLoading(false);
     } catch (err) {
       setError('Falha ao buscar os dados do professor.');
-      console.error(err);
-    } finally {
+      console.error('Erro ao buscar disciplinas:', err);
       setLoading(false);
     }
-  }, [user, isTeacher]);
+  }, [user?.id, isTeacher]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  return { subjects, grades, absences, loading, error, refetch: fetchData };
+  return { subjects, loading, error, refetch: fetchData };
 };

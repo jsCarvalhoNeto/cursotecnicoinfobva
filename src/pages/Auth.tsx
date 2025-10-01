@@ -33,9 +33,11 @@ export default function Auth() {
       toast({
         variant: "destructive",
         title: "Erro no login",
-        description: error === 'Invalid login credentials' 
-          ? "Email ou senha incorretos" 
-          : "Ocorreu um erro ao tentar fazer login"
+        description: error.includes('Senha incorreta')
+          ? error // Usar a mensagem específica do servidor
+          : error.includes('Credenciais inválidas')
+          ? "Email ou senha incorretos. Por favor, verifique suas credenciais e tente novamente."
+          : "Ocorreu um erro ao tentar fazer login. Por favor, tente novamente mais tarde."
       });
     } else {
       toast({
@@ -120,6 +122,7 @@ export default function Auth() {
                     id="login-password"
                     name="password"
                     type="password"
+                    autoComplete="current-password"
                     required
                   />
                 </div>
@@ -171,6 +174,7 @@ export default function Auth() {
                     id="register-password"
                     name="password"
                     type="password"
+                    autoComplete="new-password"
                     minLength={6}
                     required
                   />

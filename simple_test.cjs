@@ -1,71 +1,101 @@
-// Teste direto da rota de alteração de senha
 const http = require('http');
 
-// Teste 1: Tentar alterar senha com newPassword
-const postData1 = JSON.stringify({
-  newPassword: 'novaSenha123'
-});
+function testApi() {
+  console.log('Testando a API...');
 
-const options1 = {
-  hostname: 'localhost',
-  port: 4001,
-  path: '/api/students/1/password',
-  method: 'PUT',
-  headers: {
-    'Content-Type': 'application/json',
-    'Content-Length': Buffer.byteLength(postData1)
-  }
-};
+ // Testar rota principal
+ const options1 = {
+    hostname: 'localhost',
+    port: 4002,
+    path: '/api',
+    method: 'GET'
+  };
 
-console.log('Testando alteração de senha com newPassword...');
-const req1 = http.request(options1, (res) => {
- console.log(`Status: ${res.statusCode}`);
-  res.on('data', (chunk) => {
-    console.log('Resposta:', chunk.toString());
-  });
- res.on('end', () => {
-    console.log('Teste 1 concluído');
-    
-    // Teste 2: Tentar alterar senha com password
-    const postData2 = JSON.stringify({
-      password: 'outraSenha123'
+  const req1 = http.request(options1, (res) => {
+    let data = '';
+    res.on('data', (chunk) => {
+      data += chunk;
     });
+    res.on('end', () => {
+      console.log('\n1. Rota principal (/api):');
+      console.log('Status:', res.statusCode);
+      console.log('Resposta:', data);
+    });
+  });
 
-    const options2 = {
-      hostname: 'localhost',
-      port: 4001,
-      path: '/api/students/1/password',
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData2)
+  req1.on('error', (error) => {
+    console.error('Erro na requisição 1:', error);
+ });
+
+  req1.end();
+
+  // Testar rota de atividades do aluno
+ const options2 = {
+    hostname: 'localhost',
+    port: 4002,
+    path: '/api/activities/student',
+    method: 'GET'
+  };
+
+  const req2 = http.request(options2, (res) => {
+    let data = '';
+    res.on('data', (chunk) => {
+      data += chunk;
+    });
+    res.on('end', () => {
+      console.log('\n2. Rota GET /api/activities/student:');
+      console.log('Status:', res.statusCode);
+      try {
+        const jsonData = JSON.parse(data);
+        console.log('Resposta:', jsonData);
+      } catch {
+        console.log('Resposta:', data);
       }
-    };
-
-    console.log('\nTestando alteração de senha com password...');
-    const req2 = http.request(options2, (res) => {
-      console.log(`Status: ${res.statusCode}`);
-      res.on('data', (chunk) => {
-        console.log('Resposta:', chunk.toString());
-      });
-      res.on('end', () => {
-        console.log('Teste 2 concluído');
-        console.log('\n✓ Testes de alteração de senha concluídos!');
-      });
     });
-
-    req2.on('error', (error) => {
-      console.error('Erro no teste 2:', error);
-    });
-
-    req2.write(postData2);
-    req2.end();
   });
-});
 
-req1.on('error', (error) => {
-  console.error('Erro no teste 1:', error);
-});
+  req2.on('error', (error) => {
+    console.error('Erro na requisição 2:', error);
+  });
 
-req1.write(postData1);
-req1.end();
+  req2.end();
+
+  // Testar rota de envio de atividades do aluno
+ const postData = JSON.stringify({});
+  const options3 = {
+    hostname: 'localhost',
+    port: 4002,
+    path: '/api/student-activities',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(postData)
+    }
+ };
+
+  const req3 = http.request(options3, (res) => {
+    let data = '';
+    res.on('data', (chunk) => {
+      data += chunk;
+    });
+    res.on('end', () => {
+      console.log('\n3. Rota POST /api/student-activities:');
+      console.log('Status:', res.statusCode);
+      try {
+        const jsonData = JSON.parse(data);
+        console.log('Resposta:', jsonData);
+      } catch {
+        console.log('Resposta:', data);
+      }
+    });
+  });
+
+  req3.on('error', (error) => {
+    console.error('Erro na requisição 3:', error);
+  });
+
+  req3.write(postData);
+  req3.end();
+}
+
+testApi();

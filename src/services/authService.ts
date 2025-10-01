@@ -7,7 +7,25 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface SignUpCredentials {
+  email: string;
+  password: string;
+  fullName: string;
+  studentRegistration?: string;
+}
+
 export interface LoginResponse {
+  success: boolean;
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+    full_name: string;
+  };
+  error?: string;
+}
+
+export interface SignUpResponse {
   success: boolean;
   user?: {
     id: string;
@@ -31,7 +49,7 @@ export interface UserProfile {
 export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
   try {
     // Primeiro, vamos tentar autenticar com o backend
-    const response = await fetch('http://localhost:4001/api/auth/login', {
+    const response = await fetch('http://localhost:4002/api/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -50,7 +68,43 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
     } else {
       return {
         success: false,
-        error: result.error || 'Credenciais inválidas'
+        error: result.error || 'Erro de autenticação. Por favor, verifique suas credenciais e tente novamente.'
+      };
+    }
+  } catch (error) {
+    console.error('Erro de conexão com o servidor de autenticação:', error);
+    return {
+      success: false,
+      error: 'Erro de conexão com o servidor'
+    };
+  }
+}
+
+/**
+ * Faz cadastro de novo usuário usando a API real
+ */
+export async function signUp(credentials: SignUpCredentials): Promise<SignUpResponse> {
+  try {
+    const response = await fetch('http://localhost:4002/api/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include', // Inclui cookies de sessão
+      body: JSON.stringify(credentials)
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      return {
+        success: true,
+        user: result.user
+      };
+    } else {
+      return {
+        success: false,
+        error: result.error || 'Erro ao criar conta'
       };
     }
   } catch (error) {
@@ -67,7 +121,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
  */
 export async function logout(): Promise<boolean> {
   try {
-    const response = await fetch('http://localhost:4001/api/auth/logout', {
+    const response = await fetch('http://localhost:4002/api/auth/logout', {
       method: 'POST',
       credentials: 'include' // Inclui cookies de sessão
     });
@@ -84,7 +138,7 @@ export async function logout(): Promise<boolean> {
  */
 export async function getCurrentUser(): Promise<UserProfile | null> {
   try {
-    const response = await fetch('http://localhost:4001/api/auth/me', {
+    const response = await fetch('http://localhost:4002/api/auth/me', {
       method: 'GET',
       credentials: 'include' // Inclui cookies de sessão
     });

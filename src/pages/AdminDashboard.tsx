@@ -16,26 +16,59 @@ import { getAllStudents } from '@/services/studentService';
 import { getAllUsers } from '@/services/userService';
 import { getAllTeachers } from '@/services/teacherService';
 import { getConnection } from '@/integrations/mysql/client';
+import { subjectService } from '@/services/subjectService';
+
+interface User {
+  id: string;
+  full_name?: string;
+  email: string;
+  student_registration?: string;
+  roles: Array<{ role: string }>;
+}
+
+interface Teacher {
+  id: string;
+  full_name?: string;
+  email: string;
+}
+
+interface Student {
+  id: string;
+  full_name?: string;
+  email: string;
+  student_registration?: string;
+}
+
+interface AdminSubject {
+  id: string;
+  name: string;
+  description?: string;
+  teacher_name?: string;
+  schedule?: string;
+  current_students: number;
+  max_students: number;
+  grade?: '1º Ano' | '2º Ano' | '3º Ano';
+}
 
 export default function AdminDashboard() {
   const { user, profile, isAdmin, signOut, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
-  const [users, setUsers] = useState<any[]>([]);
-  const [teachers, setTeachers] = useState<any[]>([]);
-  const [students, setStudents] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [totalStudents, setTotalStudents] = useState(0);
-  const [subjects, setSubjects] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<AdminSubject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [showSubjectModal, setShowSubjectModal] = useState(false);
-  const [editingSubject, setEditingSubject] = useState<any>(null);
+  const [editingSubject, setEditingSubject] = useState<AdminSubject | null>(null);
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [showTeacherModal, setShowTeacherModal] = useState(false);
-  const [editingTeacher, setEditingTeacher] = useState<any>(null);
-  const [editingStudent, setEditingStudent] = useState<any>(null);
-  const [subjectToDelete, setSubjectToDelete] = useState<any>(null);
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [subjectToDelete, setSubjectToDelete] = useState<AdminSubject | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -49,7 +82,7 @@ export default function AdminDashboard() {
 
   const fetchTeachers = async () => {
     setLoadingTeachers(true);
-    const API_URL = 'http://localhost:4001/api/teachers'; // URL absoluta para o backend
+      const API_URL = 'http://localhost:4002/api/teachers'; // URL absoluta para o backend
 
     try {
       const response = await fetch(API_URL);
@@ -108,7 +141,7 @@ export default function AdminDashboard() {
   };
 
   const deleteTeacher = async (teacherId: string) => {
-    const API_URL = `http://localhost:4001/api/teachers/${teacherId}`;
+    const API_URL = `http://localhost:4002/api/teachers/${teacherId}`;
 
     try {
       const response = await fetch(API_URL, {
@@ -137,7 +170,7 @@ export default function AdminDashboard() {
   const deleteUser = async (userId: string) => {
     try {
       // Remove o estudante via API real
-      const API_URL = `http://localhost:4001/api/students/${userId}`;
+      const API_URL = `http://localhost:4002/api/students/${userId}`;
       const response = await fetch(API_URL, {
         method: 'DELETE',
       });
@@ -165,15 +198,20 @@ export default function AdminDashboard() {
 
   const fetchSubjects = async () => {
     setLoadingSubjects(true);
-    const API_URL = 'http://localhost:4001/api/subjects'; // URL absoluta para o backend
-
     try {
-      const response = await fetch(API_URL);
-      if (!response.ok) {
-        throw new Error('Falha ao buscar disciplinas da API');
-      }
-      const data = await response.json();
-      setSubjects(data);
+      const data = await subjectService.getAll();
+      // Converter os dados para o formato AdminSubject
+      const adminSubjects = data.map(subject => ({
+        id: subject.id.toString(),
+        name: subject.name,
+        description: subject.description,
+        teacher_name: subject.teacher_name,
+        schedule: subject.schedule,
+        current_students: subject.current_students || 0,
+        max_students: subject.max_students,
+        grade: subject.grade
+      }));
+      setSubjects(adminSubjects);
     } catch (error) {
       console.error('Error fetching subjects:', error);
       toast({
@@ -187,22 +225,12 @@ export default function AdminDashboard() {
   };
 
   const deleteSubject = async (subjectId: string) => {
-    const API_URL = `http://localhost:4001/api/subjects/${subjectId}`;
-
     try {
-      const response = await fetch(API_URL, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Falha ao deletar disciplina da API');
-      }
-
+      await subjectService.delete(subjectId);
       toast({
         title: "Sucesso",
         description: "Disciplina removida com sucesso do sistema.",
       });
-<<<<<<< HEAD
       fetchSubjects(); // Atualiza a lista de disciplinas
       setSubjectToDelete(null);
     } catch (error) {
@@ -251,7 +279,7 @@ export default function AdminDashboard() {
       console.log(`Promovendo usuário a admin: ${userId}`);
       
       // Chama a API real para atualizar o papel do usuário
-      const response = await fetch(`http://localhost:4001/api/users/${userId}/role`, {
+      const response = await fetch(`http://localhost:4002/api/users/${userId}/role`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -779,9 +807,9 @@ export default function AdminDashboard() {
                           <p className="text-sm text-muted-foreground">{subject.description}</p>
                         )}
                         <div className="flex justify-between items-center">
-                          <div className="text-sm text-muted-foreground">
-                            Semestre: {subject.semester || 'Não informado'}
-                          </div>
+                        <div className="text-sm text-muted-foreground">
+                          Série: {subject.grade || 'Não informado'}
+                        </div>
                           <div className="flex gap-2">
                             <Button
                               size="sm"

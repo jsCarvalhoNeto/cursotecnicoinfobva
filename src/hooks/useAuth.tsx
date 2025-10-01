@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { login, logout, getCurrentUser, type UserProfile as AuthUserProfile } from '@/services/authService';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import { login, logout, getCurrentUser, signUp as apiSignUp, type UserProfile as AuthUserProfile, type SignUpCredentials } from '@/services/authService';
 import { hasTemporaryPassword } from '@/services/studentService';
 
 export interface UserProfile {
@@ -21,6 +21,7 @@ interface AuthContextType {
   userRole: UserRole | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+ signUp: (email: string, password: string, fullName: string, studentRegistration?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
   isStudent: boolean;
@@ -74,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(profileData);
     setUserRole(authUser.role as UserRole);
     localStorage.setItem('session', JSON.stringify({ user: userData }));
-  }, []);
+ }, []);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -113,7 +114,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: null };
       } else {
         setLoading(false);
-        return { error: result.error || 'Credenciais inválidas.' };
+        return { error: result.error || 'Erro de autenticação. Por favor, verifique suas credenciais.' };
+      }
+    } catch (error) {
+      setLoading(false);
+      return { error: 'Erro de conexão com o servidor.' };
+    }
+  };
+
+  const signUp = async (email: string, password: string, fullName: string, studentRegistration?: string): Promise<{ error: string | null }> => {
+    setLoading(true);
+    
+    try {
+      const credentials: SignUpCredentials = {
+        email,
+        password,
+        fullName,
+        studentRegistration
+      };
+
+      const result = await apiSignUp(credentials);
+      
+      if (result.success && result.user) {
+        setUserData(result.user);
+        setLoading(false);
+        return { error: null };
+      } else {
+        setLoading(false);
+        return { error: result.error || 'Erro ao criar conta.' };
       }
     } catch (error) {
       setLoading(false);
@@ -136,19 +164,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return await hasTemporaryPassword(userId);
   };
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     profile,
     userRole,
     loading,
     signIn,
+    signUp,
     signOut,
     isAdmin: userRole === 'admin',
     isStudent: userRole === 'student',
     isTeacher: userRole === 'teacher',
     hasTemporaryPassword: hasTempPassword,
     checkTemporaryPassword,
-  };
+  }), [user, profile, userRole, loading, hasTempPassword]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen w-full">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={value}>
